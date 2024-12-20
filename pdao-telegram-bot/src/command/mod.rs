@@ -61,14 +61,14 @@ impl TelegramBot {
         {
             let message = match error {
                 ReferendumImportError::AlreadyImported => format!(
-                    "{} referendum {} already imported. You can use the `update` command under the related topic to update refererendum status and contents.",
+                    "{} referendum {} has already been imported.",
+                    // "{} referendum {} already imported. You can use the `update` command under the related topic to update refererendum status and contents.",
                     chain.display,
                     index,
                 ),
                 ReferendumImportError::ReferendumNotFoundOnSubSquare => format!(
                     "{} referendum {} not found on SubSquare.",
-                    chain.display,
-                    index,
+                    chain.display, index,
                 ),
                 ReferendumImportError::SystemError(description) => description,
             };
