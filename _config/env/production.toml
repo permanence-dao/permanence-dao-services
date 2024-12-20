@@ -1,0 +1,12 @@
+[log]
+pdao_level = "info"
+other_level = "warn"
+
+[postgres]
+host = "127.0.0.1"
+
+[metrics]
+host = "0.0.0.0"
+
+[referendum_importer]
+sleep_seconds = 1800

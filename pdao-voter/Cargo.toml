@@ -1,0 +1,17 @@
+[package]
+name = "pdao-voter"
+version = "0.1.4"
+edition = "2021"
+rust-version = "1.77.2"
+authors = ["kukabi <kutsal@helikon.io>"]
+
+[dependencies]
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+pdao-config = { path = "../pdao-config" }
+pdao-metrics = { path = "../pdao-metrics" }
+pdao-service = { path = "../pdao-service" }
+lazy_static = { workspace = true }
+log = { workspace = true }
+once_cell = { workspace = true }
+tokio = { workspace = true, features = ["full"] }

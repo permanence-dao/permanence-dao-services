@@ -1,0 +1,40 @@
+[common]
+recovery_retry_seconds = 5
+
+[log]
+pdao_level = "debug"
+other_level = "warn"
+
+[http]
+request_timeout_seconds = 20
+
+[postgres]
+host = "127.0.0.1"
+port = 5432
+username = "pdao"
+password = "pdao"
+database_name = "pdao"
+pool_max_connections = 64
+connection_timeout_seconds = 5
+
+[substrate]
+connection_timeout_seconds = 15
+request_timeout_seconds = 15
+gov_proxy_seed_phrase = "seed"
+
+[metrics]
+host = "127.0.0.1"
+referendum_importer_port = 11010
+voter_port = 11011
+
+[referendum_importer]
+opensquare_space = "permanence"
+
+[telegram]
+api_token = "telegram_api_token"
+chat_id = -145
+bot_username = "@permanence_dao_bot"
+
+[voter]
+sleep_seconds = 1800
+min_referendum_id = 1200

@@ -1,0 +1,1 @@
+DROP TABLE pdao_network CASCADE;

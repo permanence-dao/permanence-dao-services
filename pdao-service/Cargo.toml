@@ -1,0 +1,17 @@
+[package]
+name = "pdao-service"
+version = "0.1.4"
+edition = "2021"
+rust-version = "1.77.2"
+
+[dependencies]
+actix-web = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }
+pdao-config = { path = "../pdao-config" }
+pdao-logging = { path = "../pdao-logging" }
+pdao-metrics = { path = "../pdao-metrics" }
+pdao-types = { path = "../pdao-types" }
+tokio = { workspace = true, features = ["full"] }

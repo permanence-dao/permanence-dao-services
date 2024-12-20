@@ -1,0 +1,22 @@
+[package]
+name = "pdao-telegram-bot"
+version = "0.1.4"
+edition = "2021"
+rust-version = "1.77.2"
+authors = ["kukabi <kutsal@helikon.io>"]
+
+[dependencies]
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+frankenstein = { version = "0.37", default-features = false, features = ["async-http-client", "async-telegram-trait"] }
+lazy_static = { workspace = true }
+log = { workspace = true }
+once_cell = { workspace = true }
+pdao-config = { path = "../pdao-config" }
+pdao-metrics = { path = "../pdao-metrics" }
+pdao-referendum-importer = { path = "../pdao-referendum-importer" }
+pdao-types = { path = "../pdao-types" }
+pdao-service = { path = "../pdao-service" }
+pdao-telegram-client = { path = "../pdao-telegram-client" }
+regex = "1.11.1"
+tokio = { workspace = true, features = ["full"] }
