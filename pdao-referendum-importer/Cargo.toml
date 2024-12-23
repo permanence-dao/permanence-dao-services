@@ -8,7 +8,6 @@ authors = ["kukabi <kutsal@helikon.io>"]
 [dependencies]
 anyhow = { workspace = true }
 pdao-config = { path = "../pdao-config" }
-pdao-metrics = { path = "../pdao-metrics" }
 pdao-opensquare-client = { path = "../pdao-opensquare-client" }
 pdao-persistence = { path = "../pdao-persistence" }
 pdao-substrate-client = { path = "../pdao-substrate-client" }
@@ -16,5 +15,4 @@ pdao-subsquare-client = { path = "../pdao-subsquare-client" }
 pdao-telegram-client = { path = "../pdao-telegram-client" }
 pdao-types = { path = "../pdao-types" }
 log = { workspace = true }
-once_cell = { workspace = true }
 thiserror = { workspace = true }

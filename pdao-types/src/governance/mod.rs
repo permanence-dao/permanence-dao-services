@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 pub mod opensquare;
+pub mod policy;
 pub mod subsquare;
 pub mod track;
 

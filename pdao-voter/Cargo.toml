@@ -7,11 +7,7 @@ authors = ["kukabi <kutsal@helikon.io>"]
 
 [dependencies]
 anyhow = { workspace = true }
-async-trait = { workspace = true }
-pdao-config = { path = "../pdao-config" }
-pdao-metrics = { path = "../pdao-metrics" }
-pdao-service = { path = "../pdao-service" }
-lazy_static = { workspace = true }
 log = { workspace = true }
-once_cell = { workspace = true }
+pdao-config = { path = "../pdao-config" }
+subxt = "0.38.0"
 tokio = { workspace = true, features = ["full"] }

@@ -65,6 +65,7 @@ pub struct TelegramConfig {
 pub struct VoterConfig {
     pub sleep_seconds: u64,
     pub min_referendum_id: u32,
+    pub member_count: u32,
 }
 
 #[derive(Clone, Debug, Deserialize)]

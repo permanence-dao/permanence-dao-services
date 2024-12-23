@@ -4,6 +4,8 @@ use lazy_static::lazy_static;
 use pdao_config::Config;
 use pdao_service::Service;
 
+use pdao_opensquare_client::OpenSquareClient;
+use pdao_persistence::postgres::PostgreSQLStorage;
 use pdao_referendum_importer::ReferendumImporter;
 use pdao_telegram_client::TelegramClient;
 use regex::Regex;
@@ -20,6 +22,8 @@ lazy_static! {
 }
 
 pub struct TelegramBot {
+    postgres: PostgreSQLStorage,
+    opensquare_client: OpenSquareClient,
     telegram_client: TelegramClient,
     referendum_importer: ReferendumImporter,
 }
@@ -27,6 +31,8 @@ pub struct TelegramBot {
 impl TelegramBot {
     pub async fn new() -> anyhow::Result<Self> {
         Ok(Self {
+            postgres: PostgreSQLStorage::new(&CONFIG).await?,
+            opensquare_client: OpenSquareClient::new(&CONFIG)?,
             telegram_client: TelegramClient::new(&CONFIG),
             referendum_importer: ReferendumImporter::new(&CONFIG).await?,
         })
@@ -60,7 +66,7 @@ impl TelegramBot {
                 // unimplemented
             }
             "/status" => {
-                // unimplemented
+                self.process_status_command(chat_id, thread_id).await?;
             }
             _ => {
                 // err - send message

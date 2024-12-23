@@ -14,6 +14,8 @@ log = { workspace = true }
 once_cell = { workspace = true }
 pdao-config = { path = "../pdao-config" }
 pdao-metrics = { path = "../pdao-metrics" }
+pdao-opensquare-client = { path = "../pdao-opensquare-client" }
+pdao-persistence = { path = "../pdao-persistence" }
 pdao-referendum-importer = { path = "../pdao-referendum-importer" }
 pdao-types = { path = "../pdao-types" }
 pdao-service = { path = "../pdao-service" }

@@ -3,7 +3,7 @@ use frankenstein::{
     LinkPreviewOptions, Message, MethodResponse, ParseMode, SendMessageParams, Update,
 };
 use pdao_config::Config;
-use pdao_types::governance::opensquare::NewProposalResponse;
+use pdao_types::governance::opensquare::OpenSquareNewProposalResponse;
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::governance::track::Track;
 use pdao_types::substrate::chain::Chain;
@@ -40,7 +40,7 @@ impl TelegramClient {
         chain: &Chain,
         config: &Config,
         referendum: &SubSquareReferendum,
-        new_opensquare_proposal_response: &NewProposalResponse,
+        new_opensquare_proposal_response: &OpenSquareNewProposalResponse,
     ) -> anyhow::Result<(i32, i32)> {
         log::info!(
             "Create Telegram topic for {} referendum ${}.",

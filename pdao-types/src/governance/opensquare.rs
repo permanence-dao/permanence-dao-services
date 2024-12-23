@@ -2,36 +2,37 @@ use crate::governance::track::Track;
 use crate::substrate::account_id::AccountId;
 use crate::substrate::chain::Chain;
 use chrono::{Datelike, Days, NaiveDate, NaiveDateTime, Utc};
+use enum_iterator::Sequence;
 use pdao_config::Config;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NetworkAsset {
+pub struct OpenSquareNetworkAsset {
     pub symbol: String,
     pub decimals: u8,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Network {
+pub struct OpenSquareNetwork {
     pub network: String,
     pub ss58_format: u16,
-    pub assets: Vec<NetworkAsset>,
+    pub assets: Vec<OpenSquareNetworkAsset>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SnapshotHeight {
+pub struct OpenSquareSnapshotHeight {
     pub polkadot: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NetworksConfig {
+pub struct OpenSquareNetworksConfig {
     pub symbol: String,
     pub decimals: u8,
-    pub networks: Vec<Network>,
+    pub networks: Vec<OpenSquareNetwork>,
     pub accessibility: String,
     pub whitelist: Vec<String>,
     pub strategies: Vec<String>,
@@ -40,9 +41,9 @@ pub struct NetworksConfig {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Proposal {
+pub struct OpenSquareNewProposal {
     pub space: String,
-    pub networks_config: NetworksConfig,
+    pub networks_config: OpenSquareNetworksConfig,
     pub title: String,
     pub content: String,
     pub content_type: String,
@@ -50,14 +51,48 @@ pub struct Proposal {
     pub choices: Vec<String>,
     pub start_date: u64,
     pub end_date: u64,
-    pub snapshot_heights: SnapshotHeight,
+    pub snapshot_heights: OpenSquareSnapshotHeight,
     pub real_proposer: Option<AccountId>,
     pub proposer_network: String,
     pub version: String,
     pub timestamp: u64,
 }
 
-impl Proposal {
+#[derive(Clone, Debug, Sequence, Deserialize, Serialize, PartialEq)]
+pub enum OpenSquareVote {
+    Aye,
+    Nay,
+    Abstain,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenSquareReferendumVote {
+    #[serde(rename = "_id")]
+    pub id: String,
+    pub cid: String,
+    #[serde(rename = "proposal")]
+    pub proposal_id: String,
+    pub voter: AccountId,
+    pub address: AccountId,
+    pub choices: Vec<OpenSquareVote>,
+    pub remark: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSquareReferendum {
+    #[serde(rename = "_id")]
+    pub id: String,
+    pub space: String,
+    pub post_uid: String,
+    pub title: String,
+    pub content: String,
+    pub proposer: AccountId,
+    pub address: AccountId,
+    pub status: String,
+}
+
+impl OpenSquareNewProposal {
     pub fn new(
         chain: &Chain,
         block_height: u64,
@@ -75,13 +110,13 @@ impl Proposal {
             NaiveDate::from_ymd_opt(end_date.year(), end_date.month(), end_date.day()).unwrap();
         Self {
             space: config.referendum_importer.opensquare_space.clone(),
-            networks_config: NetworksConfig {
+            networks_config: OpenSquareNetworksConfig {
                 symbol: chain.token_ticker.clone(),
                 decimals: 10,
-                networks: vec![Network {
+                networks: vec![OpenSquareNetwork {
                     network: chain.chain.clone(),
                     ss58_format: chain.ss58_prefix,
-                    assets: vec![NetworkAsset {
+                    assets: vec![OpenSquareNetworkAsset {
                         symbol: chain.token_ticker.clone(),
                         decimals: chain.token_decimals as u8,
                     }],
@@ -116,7 +151,7 @@ impl Proposal {
             choices: vec!["Aye".to_string(), "Nay".to_string(), "Abstain".to_string()],
             start_date: start_of_day.and_utc().timestamp_millis() as u64,
             end_date: NaiveDateTime::from(end_day).and_utc().timestamp_millis() as u64,
-            snapshot_heights: SnapshotHeight {
+            snapshot_heights: OpenSquareSnapshotHeight {
                 polkadot: block_height,
             },
             real_proposer: None,
@@ -129,15 +164,24 @@ impl Proposal {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NewProposalRequest {
-    pub data: Proposal,
+pub struct OpenSquareNewProposalRequest {
+    pub data: OpenSquareNewProposal,
     pub address: String,
     pub signature: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NewProposalResponse {
+pub struct OpenSquareNewProposalResponse {
     pub cid: String,
     pub post_uid: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSquareReferendumVotesResponse {
+    pub items: Vec<OpenSquareReferendumVote>,
+    pub total: u32,
+    pub page: u32,
+    pub page_size: u32,
 }

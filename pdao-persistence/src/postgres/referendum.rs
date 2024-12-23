@@ -20,6 +20,24 @@ type ReferendumRecord = (
     Option<String>,
 );
 
+fn referendum_record_into_referendum(record: &ReferendumRecord) -> anyhow::Result<Referendum> {
+    Ok(Referendum {
+        id: record.0 as u32,
+        network_id: record.1 as u32,
+        track: Track::from_id(record.2 as u16).unwrap(),
+        index: record.3 as u32,
+        status: ReferendumStatus::from_str(&record.4)?,
+        title: record.5.clone(),
+        content: record.6.clone(),
+        content_type: record.7.clone(),
+        telegram_chat_id: record.8,
+        telegram_topic_id: record.9,
+        telegram_intro_message_id: record.10,
+        opensquare_cid: record.11.clone(),
+        opensquare_post_uid: record.12.clone(),
+    })
+}
+
 impl PostgreSQLStorage {
     pub async fn save_referendum(
         &self,
@@ -73,21 +91,30 @@ impl PostgreSQLStorage {
             .fetch_optional(&self.connection_pool)
             .await?;
         if let Some(record) = maybe_record {
-            Ok(Some(Referendum {
-                id: record.0 as u32,
-                network_id: record.1 as u32,
-                track: Track::from_id(record.2 as u16).unwrap(),
-                index: record.3 as u32,
-                status: ReferendumStatus::from_str(&record.4)?,
-                title: record.5.clone(),
-                content: record.6.clone(),
-                content_type: record.7.clone(),
-                telegram_chat_id: record.8,
-                telegram_topic_id: record.9,
-                telegram_intro_message_id: record.10,
-                opensquare_cid: record.11.clone(),
-                opensquare_post_uid: record.12.clone(),
-            }))
+            Ok(Some(referendum_record_into_referendum(&record)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn get_referendum_by_telegram_chat_and_thread_id(
+        &self,
+        chat_id: i64,
+        thread_id: i32,
+    ) -> anyhow::Result<Option<Referendum>> {
+        let maybe_record: Option<ReferendumRecord> = sqlx::query_as(
+            r#"
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid
+            FROM pdao_referendum
+            WHERE telegram_chat_id = $1 AND telegram_topic_id = $2
+            "#,
+        )
+            .bind(chat_id)
+            .bind(thread_id)
+            .fetch_optional(&self.connection_pool)
+            .await?;
+        if let Some(record) = maybe_record {
+            Ok(Some(referendum_record_into_referendum(&record)?))
         } else {
             Ok(None)
         }

@@ -1,5 +1,8 @@
 use pdao_config::Config;
-use pdao_types::governance::opensquare::{NewProposalRequest, NewProposalResponse, Proposal};
+use pdao_types::governance::opensquare::{
+    OpenSquareNewProposal, OpenSquareNewProposalRequest, OpenSquareNewProposalResponse,
+    OpenSquareReferendum, OpenSquareReferendumVote, OpenSquareReferendumVotesResponse,
+};
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::governance::track::Track;
 use pdao_types::substrate::chain::Chain;
@@ -23,12 +26,41 @@ impl OpenSquareClient {
         })
     }
 
+    pub async fn fetch_referendum(
+        &self,
+        cid: &str,
+    ) -> anyhow::Result<Option<OpenSquareReferendum>> {
+        let url = format!("https://voting.opensquare.io/api/permanence/proposal/{cid}",);
+        let response = self.http_client.get(url).send().await?;
+        if response.status().as_u16() == 404 {
+            return Ok(None);
+        }
+        let refererendum = response.json::<OpenSquareReferendum>().await?;
+        Ok(Some(refererendum))
+    }
+
+    pub async fn fetch_referendum_votes(
+        &self,
+        cid: &str,
+    ) -> anyhow::Result<Option<Vec<OpenSquareReferendumVote>>> {
+        let url = format!("https://voting.opensquare.io/api/permanence/proposal/{cid}/votes",);
+        let response = self.http_client.get(url).send().await?;
+        if response.status().as_u16() == 404 {
+            return Ok(None);
+        }
+        let votes = response
+            .json::<OpenSquareReferendumVotesResponse>()
+            .await?
+            .items;
+        Ok(Some(votes))
+    }
+
     pub async fn create_opensquare_proposal(
         &self,
         chain: &Chain,
         block_height: u64,
         referendum: &SubSquareReferendum,
-    ) -> anyhow::Result<NewProposalResponse> {
+    ) -> anyhow::Result<OpenSquareNewProposalResponse> {
         log::info!(
             "Create OpenSquare proposal for {} referendum ${}.",
             chain.token_ticker,
@@ -53,7 +85,7 @@ impl OpenSquareClient {
                 referendum.content.clone().unwrap_or("N/A".to_string())
             }
         );
-        let proposal = Proposal::new(
+        let proposal = OpenSquareNewProposal::new(
             chain,
             block_height,
             &self.config,
@@ -65,7 +97,7 @@ impl OpenSquareClient {
         let proposal_json = serde_json::to_string(&proposal)?;
         let signature = pair.sign(proposal_json.as_bytes());
         let signature_hex = format!("0x{}", hex::encode(signature));
-        let request = NewProposalRequest {
+        let request = OpenSquareNewProposalRequest {
             data: proposal,
             address: address.clone(),
             signature: signature_hex,
@@ -79,7 +111,7 @@ impl OpenSquareClient {
             .json(&request)
             .send()
             .await?;
-        let response: NewProposalResponse = response.json().await?;
+        let response: OpenSquareNewProposalResponse = response.json().await?;
         log::info!(
             "Created OpenSquare proposal for {} referendum ${} with CID {}.",
             chain.token_ticker,

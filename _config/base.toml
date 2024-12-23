@@ -38,3 +38,4 @@ bot_username = "@permanence_dao_bot"
 [voter]
 sleep_seconds = 1800
 min_referendum_id = 1200
+member_count = 10
