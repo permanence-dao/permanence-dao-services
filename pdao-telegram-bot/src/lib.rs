@@ -153,6 +153,18 @@ async fn import_referenda() -> anyhow::Result<()> {
                 .get_referendum_by_index(chain.id, referendum.referendum_index)
                 .await?;
             if db_referendum.is_none() {
+                if referendum.content.is_none() {
+                    let message = format!(
+                        "{} referendum {} has entered the decision period but missing content. Temporarily skipping auto-import.",
+                        chain.display,
+                        referendum.referendum_index,
+                    );
+                    log::warn!("{message}");
+                    telegram_client
+                        .send_message(CONFIG.telegram.chat_id, None, &message)
+                        .await?;
+                    continue;
+                }
                 log::info!("Try to import referendum {}.", referendum.referendum_index);
                 if let Err(error) = referendum_importer
                     .import_referendum(&chain, referendum.referendum_index)
