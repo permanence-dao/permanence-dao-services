@@ -74,7 +74,7 @@ impl OpenSquareClient {
 
         let content = format!(
             "https://{}.subsquare.io/referenda/{}\n\n{}",
-            chain.display,
+            chain.chain,
             referendum.referendum_index,
             if let Some(content_summary) = &referendum.content_summary {
                 if let Some(summary) = &content_summary.summary {
