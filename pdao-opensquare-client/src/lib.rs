@@ -62,7 +62,7 @@ impl OpenSquareClient {
         referendum: &SubSquareReferendum,
     ) -> anyhow::Result<OpenSquareNewProposalResponse> {
         log::info!(
-            "Create OpenSquare proposal for {} referendum ${}.",
+            "Create OpenSquare proposal for {} referendum {}.",
             chain.token_ticker,
             referendum.referendum_index
         );
@@ -73,7 +73,8 @@ impl OpenSquareClient {
             .to_ss58check_with_version(Ss58AddressFormat::from(chain.ss58_prefix));
 
         let content = format!(
-            "https://polkadot.subsquare.io/referenda/{}\n\n{}",
+            "https://{}.subsquare.io/referenda/{}\n\n{}",
+            chain.display,
             referendum.referendum_index,
             if let Some(content_summary) = &referendum.content_summary {
                 if let Some(summary) = &content_summary.summary {
