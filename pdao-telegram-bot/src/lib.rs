@@ -229,7 +229,7 @@ impl Service for TelegramBot {
         let mut offset: Option<i64> = None;
 
         tokio::spawn(async move {
-            let delay_seconds = 60 * 10;
+            let delay_seconds = 60 * 30;
             loop {
                 if let Err(err) = import_referenda().await {
                     log::error!("Import referenda failed: {}", err);
