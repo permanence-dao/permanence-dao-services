@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Debug, PartialEq, Sequence, Serialize, Deserialize)]
 pub enum Track {
+    Root,
     WhitelistedCaller,
     WishForChange,
     // general admin
@@ -26,6 +27,7 @@ pub enum Track {
 impl Track {
     pub fn id(&self) -> u16 {
         match self {
+            Track::Root => 0,
             Track::WhitelistedCaller => 1,
             Track::WishForChange => 2,
             // general admin
@@ -49,6 +51,7 @@ impl Track {
 
     pub fn short_name(&self) -> &str {
         match self {
+            Track::Root => "R",
             Track::WhitelistedCaller => "WC",
             Track::WishForChange => "WFC",
             // general admin
@@ -72,6 +75,7 @@ impl Track {
 
     pub fn name(&self) -> &str {
         match self {
+            Track::Root => "Root",
             Track::WhitelistedCaller => "Whitelisted Caller",
             Track::WishForChange => "Wish For Change",
             // general admin
@@ -95,6 +99,7 @@ impl Track {
 
     pub fn from_id(id: u16) -> Option<Track> {
         match id {
+            0 => Some(Track::Root),
             1 => Some(Track::WhitelistedCaller),
             2 => Some(Track::WishForChange),
             10 => Some(Track::StakingAdmin),
