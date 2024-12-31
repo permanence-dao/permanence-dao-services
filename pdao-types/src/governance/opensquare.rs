@@ -102,6 +102,7 @@ impl OpenSquareNewProposal {
         title: String,
         content: String,
     ) -> Self {
+        let space_chain = Chain::polkadot();
         let now = Utc::now();
         let day = NaiveDate::from_ymd_opt(now.year(), now.month(), now.day()).unwrap();
         let start_of_day = NaiveDateTime::from(day);
@@ -111,14 +112,14 @@ impl OpenSquareNewProposal {
         Self {
             space: config.referendum_importer.opensquare_space.clone(),
             networks_config: OpenSquareNetworksConfig {
-                symbol: chain.token_ticker.clone(),
-                decimals: 10,
+                symbol: space_chain.token_ticker.clone(),
+                decimals: space_chain.token_decimals as u8,
                 networks: vec![OpenSquareNetwork {
-                    network: chain.chain.clone(),
-                    ss58_format: chain.ss58_prefix,
+                    network: space_chain.chain.clone(),
+                    ss58_format: space_chain.ss58_prefix,
                     assets: vec![OpenSquareNetworkAsset {
-                        symbol: chain.token_ticker.clone(),
-                        decimals: chain.token_decimals as u8,
+                        symbol: space_chain.token_ticker.clone(),
+                        decimals: space_chain.token_decimals as u8,
                     }],
                 }],
                 accessibility: "whitelist".to_string(),
@@ -155,7 +156,7 @@ impl OpenSquareNewProposal {
                 polkadot: block_height,
             },
             real_proposer: None,
-            proposer_network: chain.chain.clone(),
+            proposer_network: space_chain.chain.clone(),
             version: "5".to_string(),
             timestamp: (Utc::now().timestamp_millis() / 1000) as u64,
         }

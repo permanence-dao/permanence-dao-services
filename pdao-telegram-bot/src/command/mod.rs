@@ -203,7 +203,7 @@ impl TelegramBot {
         let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         let participation = aye_count + nay_count + abstain_count;
         let participation_percent = (participation * 100) / CONFIG.voter.member_count;
-        let aye_percent = (aye_count * 100) / CONFIG.voter.member_count;
+        let aye_percent = (aye_count * 100) / participation;
         message = if participation_percent < voting_policy.participation_percent as u32 {
             format!(
                 "{message}\n{}% participation not met.\n**ABSTAIN**",
