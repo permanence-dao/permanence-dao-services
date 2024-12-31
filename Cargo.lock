@@ -4102,6 +4102,7 @@ dependencies = [
  "pdao-persistence",
  "pdao-referendum-importer",
  "pdao-service",
+ "pdao-subsquare-client",
  "pdao-telegram-client",
  "pdao-types",
  "regex",

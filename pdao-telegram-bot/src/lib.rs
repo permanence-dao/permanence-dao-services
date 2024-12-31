@@ -7,7 +7,10 @@ use pdao_service::Service;
 use pdao_opensquare_client::OpenSquareClient;
 use pdao_persistence::postgres::PostgreSQLStorage;
 use pdao_referendum_importer::ReferendumImporter;
+use pdao_subsquare_client::SubSquareClient;
 use pdao_telegram_client::TelegramClient;
+use pdao_types::governance::ReferendumStatus;
+use pdao_types::substrate::chain::Chain;
 use regex::Regex;
 
 mod command;
@@ -136,6 +139,65 @@ impl TelegramBot {
     }
 }
 
+async fn import_referenda() -> anyhow::Result<()> {
+    let postgres = PostgreSQLStorage::new(&CONFIG).await?;
+    let subsquare_client = SubSquareClient::new(&CONFIG)?;
+    //let telegram_client = TelegramClient::new(&CONFIG);
+    //let referendum_importer = ReferendumImporter::new(&CONFIG).await?;
+    let chain = Chain::polkadot();
+    let referenda = subsquare_client.fetch_referenda(&chain, 1, 50).await?;
+    let mut imported_referendum_count = 0;
+    for referendum in referenda.items.iter() {
+        if let ReferendumStatus::Deciding = referendum.state.status {
+            let db_referendum = postgres
+                .get_referendum_by_index(chain.id, referendum.referendum_index)
+                .await?;
+            if db_referendum.is_none() {
+                log::info!("Import referendum {}", referendum.referendum_index);
+                /*
+                if let Err(error) = referendum_importer
+                    .import_referendum(&chain, referendum.referendum_index)
+                    .await
+                {
+                    let message = match error {
+                        ReferendumImportError::AlreadyImported => format!(
+                            "{} referendum {} has already been imported.",
+                            // "{} referendum {} already imported. You can use the `update` command under the related topic to update refererendum status and contents.",
+                            chain.display,
+                            referendum.referendum_index,
+                        ),
+                        ReferendumImportError::ReferendumNotFoundOnSubSquare => format!(
+                            "{} referendum {} not found on SubSquare.",
+                            chain.display, referendum.referendum_index,
+                        ),
+                        ReferendumImportError::SystemError(description) => description,
+                    };
+                    telegram_client
+                        .send_message(CONFIG.telegram.chat_id, None, &message)
+                        .await?;
+                    return Ok(());
+                }
+                telegram_client
+                    .send_message(
+                        CONFIG.telegram.chat_id,
+                        None,
+                        &format!(
+                            "{} referendum {} imported successfully.",
+                            chain.display,
+                            referendum.referendum_index,
+                        ),
+                    )
+                    .await?;
+
+                 */
+                imported_referendum_count += 1;
+            }
+        }
+    }
+    log::info!("Imported {} referenda.", imported_referendum_count);
+    Ok(())
+}
+
 #[async_trait(? Send)]
 impl Service for TelegramBot {
     fn get_metrics_server_addr() -> (&'static str, u16) {
@@ -148,6 +210,17 @@ impl Service for TelegramBot {
     async fn run(&'static self) -> anyhow::Result<()> {
         log::info!("Telegram bot started.");
         let mut offset: Option<i64> = None;
+
+        tokio::spawn(async move {
+            let delay_seconds = 30;
+            loop {
+                if let Err(err) = import_referenda().await {
+                    log::error!("Import referenda failed: {}", err);
+                }
+                log::info!("Sleep for {} seconds.", delay_seconds);
+                tokio::time::sleep(std::time::Duration::from_secs(delay_seconds)).await;
+            }
+        });
         loop {
             let result = self.telegram_client.get_updates(offset).await;
             match result {
