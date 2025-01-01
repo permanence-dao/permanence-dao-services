@@ -277,7 +277,7 @@ impl TelegramBot {
                 components.push(format!("{}min", minutes_left));
             }
             let time_left = components.join(" ");
-            message = format!("{message}: {time_left} remaining");
+            message = format!("{message}: {time_left} left");
         }
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         let participation = aye_count + nay_count + abstain_count;
