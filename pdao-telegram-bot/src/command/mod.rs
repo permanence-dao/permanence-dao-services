@@ -1,7 +1,9 @@
 use crate::{TelegramBot, CONFIG};
 use pdao_referendum_importer::ReferendumImportError;
+use pdao_substrate_client::SubstrateClient;
 use pdao_types::governance::opensquare::OpenSquareVote;
 use pdao_types::governance::policy::VotingPolicy;
+use pdao_types::governance::ReferendumStatus;
 use pdao_types::substrate::chain::Chain;
 use std::str::FromStr;
 
@@ -109,7 +111,7 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
-        let referendum = if let Some(referendum) = self
+        let db_referendum = if let Some(referendum) = self
             .postgres
             .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
             .await?
@@ -125,8 +127,24 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
-
-        let cid = if let Some(cid) = &referendum.opensquare_cid {
+        let chain = Chain::from_id(db_referendum.network_id);
+        let subsquare_referendum = if let Some(referendum) = self
+            .subsquare_client
+            .fetch_referendum(&chain, db_referendum.index)
+            .await?
+        {
+            referendum
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "Referendum not found on SubSquare. Contact admin.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let cid = if let Some(cid) = &db_referendum.opensquare_cid {
             cid
         } else {
             self.telegram_client
@@ -172,22 +190,23 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
-        let voting_policy =
-            if let Some(voting_policy) = VotingPolicy::voting_policy_for_track(referendum.track) {
-                voting_policy
-            } else {
-                self.telegram_client
-                    .send_message(
-                        chat_id,
-                        Some(thread_id),
-                        &format!(
-                            "No voting policy is defined for {}.",
-                            referendum.track.name(),
-                        ),
-                    )
-                    .await?;
-                return Ok(());
-            };
+        let voting_policy = if let Some(voting_policy) =
+            VotingPolicy::voting_policy_for_track(db_referendum.track)
+        {
+            voting_policy
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    &format!(
+                        "No voting policy is defined for {}.",
+                        db_referendum.track.name(),
+                    ),
+                )
+                .await?;
+            return Ok(());
+        };
         let mut aye_count = 0;
         let mut nay_count = 0;
         let mut abstain_count = 0;
@@ -200,27 +219,74 @@ impl TelegramBot {
                 abstain_count += 1;
             }
         }
-        let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
+
+        let substrate_client = SubstrateClient::new(
+            &chain.rpc_url,
+            CONFIG.substrate.connection_timeout_seconds,
+            CONFIG.substrate.request_timeout_seconds,
+        )
+        .await?;
+        let block_number = substrate_client.get_finalized_block_number().await?;
+        let maybe_blocks_left = match subsquare_referendum.state.status {
+            ReferendumStatus::Deciding => {
+                let decision_start_block = subsquare_referendum.state.block.number;
+                let decision_end_block =
+                    decision_start_block + subsquare_referendum.track_info.decision_period as u64;
+                Some(decision_end_block.saturating_sub(block_number))
+            }
+            ReferendumStatus::Confirming => {
+                let confirm_start_block = subsquare_referendum.state.block.number;
+                let confirm_end_block =
+                    confirm_start_block + subsquare_referendum.track_info.confirm_period as u64;
+                Some(confirm_end_block.saturating_sub(block_number))
+            }
+            _ => None,
+        };
+
+        let mut message = format!("{}", subsquare_referendum.state.status);
+        if let Some(blocks_left) = maybe_blocks_left {
+            let seconds_left = blocks_left * chain.block_time_seconds as u64;
+            let mut counted_seconds = 0;
+            let days_left = seconds_left / 60 / 60 / 24;
+            counted_seconds += days_left * 24 * 60 * 60;
+            let hours_left = (seconds_left - counted_seconds) / 60 / 60;
+            counted_seconds += hours_left * 60 * 60;
+            let minutes_left = (seconds_left - counted_seconds) / 60;
+            let mut components: Vec<String> = Vec::new();
+            if days_left > 0 {
+                components.push(format!("{}d", days_left));
+            }
+            if hours_left > 0 {
+                components.push(format!("{}hr", hours_left));
+            }
+            if days_left == 0 && minutes_left > 0 {
+                components.push(format!("{}min", minutes_left));
+            }
+            let time_left = components.join(" ");
+            let x_message = format!("{message}\n{time_left} remaining");
+            log::info!("XM :: {x_message}");
+        }
+        message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         let participation = aye_count + nay_count + abstain_count;
         let participation_percent = (participation * 100) / CONFIG.voter.member_count;
         let aye_percent = (aye_count * 100) / participation;
         message = if participation_percent < voting_policy.participation_percent as u32 {
             format!(
-                "{message}\n{}% participation not met.\n**ABSTAIN**",
+                "{message}\n{}% participation not met.\nABSTAIN",
                 voting_policy.participation_percent,
             )
         } else if aye_percent < voting_policy.quorum_percent as u32 {
             format!(
-                "{message}\n{}% quorum not met.\n**NAY**",
+                "{message}\n{}% quorum not met.\nNAY",
                 voting_policy.quorum_percent,
             )
         } else if aye_percent <= voting_policy.majority_percent as u32 {
             format!(
-                "{message}\n{}% majority not met.\n**NAY**",
+                "{message}\n{}% majority not met.\nNAY",
                 voting_policy.majority_percent,
             )
         } else {
-            format!("{message}\n**AYE**")
+            format!("{message}\nAYE")
         };
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)

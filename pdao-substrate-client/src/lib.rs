@@ -112,6 +112,12 @@ impl SubstrateClient {
         ))
     }
 
+    pub async fn get_finalized_block_number(&self) -> anyhow::Result<u64> {
+        let hash = self.get_finalized_block_hash().await?;
+        let header = self.get_block_header(&hash).await?;
+        header.get_number()
+    }
+
     pub async fn get_block_timestamp(&self, block_hash: &str) -> anyhow::Result<u64> {
         let hex_string: String = self
             .ws_client

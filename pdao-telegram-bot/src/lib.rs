@@ -27,6 +27,7 @@ lazy_static! {
 pub struct TelegramBot {
     postgres: PostgreSQLStorage,
     opensquare_client: OpenSquareClient,
+    subsquare_client: SubSquareClient,
     telegram_client: TelegramClient,
     referendum_importer: ReferendumImporter,
 }
@@ -36,6 +37,7 @@ impl TelegramBot {
         Ok(Self {
             postgres: PostgreSQLStorage::new(&CONFIG).await?,
             opensquare_client: OpenSquareClient::new(&CONFIG)?,
+            subsquare_client: SubSquareClient::new(&CONFIG)?,
             telegram_client: TelegramClient::new(&CONFIG),
             referendum_importer: ReferendumImporter::new(&CONFIG).await?,
         })

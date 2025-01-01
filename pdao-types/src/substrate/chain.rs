@@ -11,6 +11,7 @@ pub struct Chain {
     pub token_decimals: usize,
     pub token_format_decimal_points: usize,
     pub ss58_prefix: u16,
+    pub block_time_seconds: u16,
 }
 
 impl Chain {
@@ -24,6 +25,7 @@ impl Chain {
             token_decimals: 10,
             token_format_decimal_points: 4,
             ss58_prefix: 0,
+            block_time_seconds: 6,
         }
     }
 
@@ -37,6 +39,7 @@ impl Chain {
             token_decimals: 12,
             token_format_decimal_points: 4,
             ss58_prefix: 2,
+            block_time_seconds: 6,
         }
     }
 }
@@ -72,6 +75,13 @@ impl FromStr for Chain {
 }
 
 impl Chain {
+    pub fn from_id(id: u32) -> Self {
+        match id {
+            2 => Self::kusama(),
+            _ => Self::polkadot(),
+        }
+    }
+
     pub fn sp_core_set_default_ss58_version(&self) {
         sp_core::crypto::set_default_ss58_version(Ss58AddressFormat::from(self.ss58_prefix));
     }

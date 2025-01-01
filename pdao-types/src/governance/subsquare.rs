@@ -94,6 +94,20 @@ pub enum SubSquareReferendumSpend {
     LocalSpend(SubSquareReferendumLocalSpend),
 }
 
+#[derive(Clone, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SubSquareTrackInfo {
+    pub id: u16,
+    pub name: String,
+    pub original_name: String,
+    pub max_deciding: u32,
+    pub decision_deposit: String,
+    pub prepare_period: u32,
+    pub decision_period: u32,
+    pub confirm_period: u32,
+    pub min_enactment_period: u32,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendum {
@@ -113,6 +127,7 @@ pub struct SubSquareReferendum {
     pub is_edited: Option<bool>,
     pub content_summary: Option<SubSquareReferendumContentSummary>,
     pub all_spends: Option<Vec<SubSquareReferendumSpend>>,
+    pub track_info: SubSquareTrackInfo,
 }
 
 #[derive(Clone, Debug, Deserialize)]
