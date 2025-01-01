@@ -277,8 +277,7 @@ impl TelegramBot {
                 components.push(format!("{}min", minutes_left));
             }
             let time_left = components.join(" ");
-            let x_message = format!("{message}\n{time_left} remaining");
-            log::info!("XM :: {x_message}");
+            message = format!("{message}: {time_left} remaining");
         }
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         let participation = aye_count + nay_count + abstain_count;
