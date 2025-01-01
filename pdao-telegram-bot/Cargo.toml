@@ -18,7 +18,6 @@ pdao-opensquare-client = { path = "../pdao-opensquare-client" }
 pdao-persistence = { path = "../pdao-persistence" }
 pdao-referendum-importer = { path = "../pdao-referendum-importer" }
 pdao-subsquare-client = { path = "../pdao-subsquare-client" }
-pdao-substrate-client = { path = "../pdao-substrate-client" }
 pdao-types = { path = "../pdao-types" }
 pdao-service = { path = "../pdao-service" }
 pdao-telegram-client = { path = "../pdao-telegram-client" }

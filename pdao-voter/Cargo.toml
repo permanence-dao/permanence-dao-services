@@ -7,7 +7,4 @@ authors = ["kukabi <kutsal@helikon.io>"]
 
 [dependencies]
 anyhow = { workspace = true }
-log = { workspace = true }
-pdao-config = { path = "../pdao-config" }
 subxt = "0.38.0"
-tokio = { workspace = true, features = ["full"] }

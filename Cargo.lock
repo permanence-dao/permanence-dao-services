@@ -4102,7 +4102,6 @@ dependencies = [
  "pdao-referendum-importer",
  "pdao-service",
  "pdao-subsquare-client",
- "pdao-substrate-client",
  "pdao-telegram-client",
  "pdao-types",
  "regex",
@@ -4145,10 +4144,7 @@ name = "pdao-voter"
 version = "0.1.4"
 dependencies = [
  "anyhow",
- "log",
- "pdao-config",
  "subxt",
- "tokio",
 ]
 
 [[package]]

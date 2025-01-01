@@ -1,6 +1,5 @@
 use crate::{TelegramBot, CONFIG};
 use pdao_referendum_importer::ReferendumImportError;
-use pdao_substrate_client::SubstrateClient;
 use pdao_types::governance::opensquare::OpenSquareVote;
 use pdao_types::governance::policy::VotingPolicy;
 use pdao_types::governance::ReferendumStatus;
@@ -220,13 +219,7 @@ impl TelegramBot {
             }
         }
 
-        let substrate_client = SubstrateClient::new(
-            &chain.rpc_url,
-            CONFIG.substrate.connection_timeout_seconds,
-            CONFIG.substrate.request_timeout_seconds,
-        )
-        .await?;
-        let block_number = substrate_client.get_finalized_block_number().await?;
+        let block_number = subsquare_referendum.state.block.number;
         let maybe_blocks_left = match subsquare_referendum.state.status {
             ReferendumStatus::Deciding => {
                 if let Some(decision_info) = &subsquare_referendum.onchain_data.info.decision_info {
