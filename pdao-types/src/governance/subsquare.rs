@@ -99,7 +99,7 @@ pub enum SubSquareReferendumSpend {
 pub struct SubSquareTrackInfo {
     pub id: u16,
     pub name: String,
-    pub original_name: String,
+    pub original_name: Option<String>,
     pub max_deciding: u32,
     pub decision_deposit: String,
     pub prepare_period: u32,
