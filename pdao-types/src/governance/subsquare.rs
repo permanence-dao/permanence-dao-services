@@ -108,6 +108,30 @@ pub struct SubSquareTrackInfo {
     pub min_enactment_period: u32,
 }
 
+#[derive(Clone, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SubSquareReferendumOnChainDecisionInfo {
+    #[serde(rename = "since")]
+    pub decision_start_block_number: Option<u64>,
+    #[serde(rename = "confirming")]
+    pub confirm_start_block_number: Option<u64>,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SubSquareReferendumOnChainInfo {
+    #[serde(rename = "submitted")]
+    pub submission_block_number: u64,
+    #[serde(rename = "deciding")]
+    pub decision_info: Option<SubSquareReferendumOnChainDecisionInfo>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubSquareReferendumOnChainData {
+    pub info: SubSquareReferendumOnChainInfo,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendum {
@@ -117,6 +141,7 @@ pub struct SubSquareReferendum {
     #[serde(rename = "indexer")]
     pub extrinsic: SubSquareExtrinsic,
     pub proposer: AccountId,
+    pub onchain_data: SubSquareReferendumOnChainData,
     pub title: Option<String>,
     pub content: Option<String>,
     pub content_type: String,

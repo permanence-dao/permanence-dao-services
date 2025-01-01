@@ -8,7 +8,7 @@ pub mod policy;
 pub mod subsquare;
 pub mod track;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub enum ReferendumStatus {
     Confirming,
     Deciding,

@@ -150,7 +150,9 @@ async fn import_referenda() -> anyhow::Result<()> {
     let referenda = subsquare_client.fetch_referenda(&chain, 1, 50).await?;
     let mut imported_referendum_count = 0;
     for referendum in referenda.items.iter() {
-        if let ReferendumStatus::Deciding = referendum.state.status {
+        if ReferendumStatus::Deciding == referendum.state.status
+            || ReferendumStatus::Confirming == referendum.state.status
+        {
             let db_referendum = postgres
                 .get_referendum_by_index(chain.id, referendum.referendum_index)
                 .await?;

@@ -229,16 +229,30 @@ impl TelegramBot {
         let block_number = substrate_client.get_finalized_block_number().await?;
         let maybe_blocks_left = match subsquare_referendum.state.status {
             ReferendumStatus::Deciding => {
-                let decision_start_block = subsquare_referendum.state.block.number;
-                let decision_end_block =
-                    decision_start_block + subsquare_referendum.track_info.decision_period as u64;
-                Some(decision_end_block.saturating_sub(block_number))
+                if let Some(decision_info) = &subsquare_referendum.onchain_data.info.decision_info {
+                    if let Some(decision_start_block) = decision_info.decision_start_block_number {
+                        let decision_end_block = decision_start_block
+                            + subsquare_referendum.track_info.decision_period as u64;
+                        Some(decision_end_block.saturating_sub(block_number))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             }
             ReferendumStatus::Confirming => {
-                let confirm_start_block = subsquare_referendum.state.block.number;
-                let confirm_end_block =
-                    confirm_start_block + subsquare_referendum.track_info.confirm_period as u64;
-                Some(confirm_end_block.saturating_sub(block_number))
+                if let Some(decision_info) = &subsquare_referendum.onchain_data.info.decision_info {
+                    if let Some(confirm_start_block) = decision_info.confirm_start_block_number {
+                        let confirm_end_block = confirm_start_block
+                            + subsquare_referendum.track_info.confirm_period as u64;
+                        Some(confirm_end_block.saturating_sub(block_number))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             }
             _ => None,
         };
@@ -269,7 +283,11 @@ impl TelegramBot {
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         let participation = aye_count + nay_count + abstain_count;
         let participation_percent = (participation * 100) / CONFIG.voter.member_count;
-        let aye_percent = (aye_count * 100) / participation;
+        let aye_percent = if participation == 0 {
+            0
+        } else {
+            (aye_count * 100) / participation
+        };
         message = if participation_percent < voting_policy.participation_percent as u32 {
             format!(
                 "{message}\n{}% participation not met.\nABSTAIN",
