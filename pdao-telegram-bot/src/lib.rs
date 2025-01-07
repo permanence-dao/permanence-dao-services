@@ -200,14 +200,16 @@ async fn import_referenda() -> anyhow::Result<()> {
                             CONFIG.telegram.chat_id,
                             None,
                             &format!(
-                                "{} referendum {} auto-imported successfully.",
-                                chain.display, referendum.referendum_index,
+                                "🗳️ {} referendum {} imported:\n{}",
+                                chain.display,
+                                referendum.referendum_index,
+                                referendum.title.clone().unwrap_or("No title".to_string()),
                             ),
                         )
                         .await?;
                     imported_referendum_count += 1;
                     log::info!(
-                        "{} referendum {} auto-imported successfully.",
+                        "{} referendum {} imported.",
                         chain.display,
                         referendum.referendum_index
                     );

@@ -9,6 +9,11 @@ pub struct VotingPolicy {
 impl VotingPolicy {
     pub fn voting_policy_for_track(track: Track) -> Option<VotingPolicy> {
         match track {
+            Track::Root => Some(Self {
+                participation_percent: 0,
+                quorum_percent: 60,
+                majority_percent: 57,
+            }),
             Track::WishForChange => Some(Self {
                 participation_percent: 0,
                 quorum_percent: 60,

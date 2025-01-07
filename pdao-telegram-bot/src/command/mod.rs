@@ -169,12 +169,6 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
-        if opensquare_referendum.status.to_lowercase() != "active" {
-            self.telegram_client
-                .send_message(chat_id, Some(thread_id), "Referendum is not active.")
-                .await?;
-            return Ok(());
-        }
         let opensquare_votes = if let Some(opensquare_votes) =
             self.opensquare_client.fetch_referendum_votes(cid).await?
         {
@@ -299,6 +293,9 @@ impl TelegramBot {
         } else {
             format!("{message}\nAYE")
         };
+        if opensquare_referendum.status.to_lowercase() != "active" {
+            message = format!("{message}\nMirror referendum has been terminated.");
+        }
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)
             .await?;

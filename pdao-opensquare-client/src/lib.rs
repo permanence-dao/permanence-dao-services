@@ -103,7 +103,7 @@ impl OpenSquareClient {
             address: address.clone(),
             signature: signature_hex,
         };
-        let response = self
+        let response_result = self
             .http_client
             .post(format!(
                 "https://voting.opensquare.io/api/{}/proposals",
@@ -111,7 +111,14 @@ impl OpenSquareClient {
             ))
             .json(&request)
             .send()
-            .await?;
+            .await;
+        let response = match response_result {
+            Ok(response) => response,
+            Err(error) => {
+                log::error!("Error while creating OpenSquare proposal: {}", error);
+                return Err(error.into());
+            }
+        };
         let response: OpenSquareNewProposalResponse = response.json().await?;
         log::info!(
             "Created OpenSquare proposal for {} referendum ${} with CID {}.",
