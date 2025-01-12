@@ -157,6 +157,7 @@ async fn import_referenda() -> anyhow::Result<()> {
                 .get_referendum_by_index(chain.id, referendum.referendum_index)
                 .await?;
             if db_referendum.is_none() {
+                /*
                 if referendum.content.is_none() {
                     let message = format!(
                         "{} referendum {} has entered the decision period but missing content. Temporarily skipping auto-import.",
@@ -169,6 +170,7 @@ async fn import_referenda() -> anyhow::Result<()> {
                         .await?;
                     continue;
                 }
+                */
                 log::info!("Try to import referendum {}.", referendum.referendum_index);
                 if let Err(error) = referendum_importer
                     .import_referendum(&chain, referendum.referendum_index)
