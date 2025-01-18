@@ -9,6 +9,17 @@ use pdao_types::substrate::chain::Chain;
 use sp_core::crypto::{Ss58AddressFormat, Ss58Codec};
 use sp_core::{sr25519, Pair};
 
+fn ellipsize(input: &str, limit: usize) -> String {
+    // If input is already within the limit, just return it
+    if input.chars().count() <= limit {
+        return input.to_string();
+    }
+
+    // Otherwise, take the first `limit` characters, then add "..."
+    let truncated: String = input.chars().take(limit - 3).collect();
+    format!("{truncated}...")
+}
+
 pub struct OpenSquareClient {
     config: Config,
     http_client: reqwest::Client,
@@ -92,7 +103,7 @@ impl OpenSquareClient {
             &self.config,
             referendum.referendum_index,
             Track::from_id(referendum.track_id).unwrap(),
-            referendum.title.clone().unwrap_or("N/A".to_string()),
+            ellipsize(&referendum.title.clone().unwrap_or("N/A".to_string()), 130),
             content,
         );
         let proposal_json = serde_json::to_string(&proposal)?;
@@ -119,7 +130,12 @@ impl OpenSquareClient {
                 return Err(error.into());
             }
         };
-        let response: OpenSquareNewProposalResponse = response.json().await?;
+        let status_code = response.status();
+        let response_text = response.text().await?;
+        if !status_code.is_success() {
+            log::error!("Error response from OpenSquare proposal: {}", response_text);
+        }
+        let response: OpenSquareNewProposalResponse = serde_json::from_str(&response_text)?;
         log::info!(
             "Created OpenSquare proposal for {} referendum ${} with CID {}.",
             chain.token_ticker,

@@ -192,9 +192,12 @@ async fn import_referenda() -> anyhow::Result<()> {
                             chain.display, referendum.referendum_index,
                         ),
                     };
+                    /*
                     telegram_client
                         .send_message(CONFIG.telegram.chat_id, None, &message)
                         .await?;
+
+                     */
                     log::error!("{message}");
                 } else {
                     telegram_client

@@ -3,7 +3,6 @@ use pdao_config::Config;
 use pdao_opensquare_client::OpenSquareClient;
 use pdao_persistence::postgres::PostgreSQLStorage;
 use pdao_subsquare_client::SubSquareClient;
-use pdao_substrate_client::SubstrateClient;
 use pdao_telegram_client::TelegramClient;
 use pdao_types::governance::Referendum;
 use pdao_types::substrate::chain::Chain;
@@ -48,13 +47,6 @@ impl ReferendumImporter {
         index: u32,
     ) -> Result<Referendum, ReferendumImportError> {
         log::info!("Process {} referendum #{}.", chain.token_ticker, index,);
-        let substrate_client = SubstrateClient::new(
-            &chain.rpc_url,
-            self.config.substrate.connection_timeout_seconds,
-            self.config.substrate.request_timeout_seconds,
-        )
-        .await
-        .map_err(|error| system_err(error, "Failed to create Substrate client."))?;
         let maybe_db_referendum = self
             .postgres
             .get_referendum_by_index(chain.id, index)
@@ -81,17 +73,9 @@ impl ReferendumImporter {
         } else {
             return Err(ReferendumImportError::ReferendumNotFoundOnSubSquare);
         };
-        let block_hash = substrate_client
-            .get_finalized_block_hash()
-            .await
-            .map_err(|error| system_err(error, "Substrate error: cannot get block hash."))?;
-        let block_header = substrate_client
-            .get_block_header(&block_hash)
-            .await
-            .map_err(|error| system_err(error, "Substrate error: cannot get block header."))?;
         let new_opensquare_proposal_response = self
             .opensquare_client
-            .create_opensquare_proposal(chain, block_header.get_number().unwrap(), &referendum)
+            .create_opensquare_proposal(chain, referendum.state.block.number, &referendum)
             .await
             .map_err(|error| system_err(error, "OpenSquare error."))?;
         let new_telegram_topic_response = self
