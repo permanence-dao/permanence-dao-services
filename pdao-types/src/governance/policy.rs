@@ -14,6 +14,11 @@ impl VotingPolicy {
                 quorum_percent: 60,
                 majority_percent: 57,
             }),
+            Track::WhitelistedCaller => Some(Self {
+                participation_percent: 0,
+                quorum_percent: 60,
+                majority_percent: 57,
+            }),
             Track::WishForChange => Some(Self {
                 participation_percent: 0,
                 quorum_percent: 60,
