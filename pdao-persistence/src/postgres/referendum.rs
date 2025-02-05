@@ -19,6 +19,7 @@ type ReferendumRecord = (
     Option<String>,
     Option<String>,
     Option<i32>,
+    bool,
 );
 
 fn referendum_record_into_referendum(record: &ReferendumRecord) -> anyhow::Result<Referendum> {
@@ -37,6 +38,7 @@ fn referendum_record_into_referendum(record: &ReferendumRecord) -> anyhow::Resul
         opensquare_cid: record.11.clone(),
         opensquare_post_uid: record.12.clone(),
         last_vote_id: record.13.map(|id| id as u32),
+        is_terminated: record.14,
     })
 }
 
@@ -83,7 +85,7 @@ impl PostgreSQLStorage {
     ) -> anyhow::Result<Option<Referendum>> {
         let maybe_record: Option<ReferendumRecord> = sqlx::query_as(
             r#"
-            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated
             FROM pdao_referendum
             WHERE network_id = $1 AND index = $2
             "#,
@@ -106,7 +108,7 @@ impl PostgreSQLStorage {
     ) -> anyhow::Result<Option<Referendum>> {
         let maybe_record: Option<ReferendumRecord> = sqlx::query_as(
             r#"
-            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated
             FROM pdao_referendum
             WHERE telegram_chat_id = $1 AND telegram_topic_id = $2
             "#,
@@ -120,5 +122,19 @@ impl PostgreSQLStorage {
         } else {
             Ok(None)
         }
+    }
+
+    pub async fn terminate_referendum(&self, referendum_id: u32) -> anyhow::Result<Option<i32>> {
+        let maybe_result: Option<(i32,)> = sqlx::query_as(
+            r#"
+            UPDATE pdao_referendum SET is_terminated = TRUE
+            WHERE id = $1
+            RETURNING id
+            "#,
+        )
+        .bind(referendum_id as i32)
+        .fetch_optional(&self.connection_pool)
+        .await?;
+        Ok(maybe_result.map(|r| r.0))
     }
 }

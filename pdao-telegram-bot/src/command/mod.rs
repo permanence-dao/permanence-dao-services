@@ -115,6 +115,12 @@ impl TelegramBot {
             .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
             .await?
         {
+            if referendum.is_terminated {
+                self.telegram_client
+                    .send_message(chat_id, Some(thread_id), "Referendum has been terminated.")
+                    .await?;
+                return Ok(());
+            }
             referendum
         } else {
             self.telegram_client
@@ -388,6 +394,7 @@ impl TelegramBot {
         self.opensquare_client
             .terminate_opensquare_proposal(&chain, cid)
             .await?;
+        self.postgres.terminate_referendum(db_referendum.id).await?;
         self.telegram_client
             .send_message(
                 chat_id,
@@ -440,6 +447,16 @@ impl TelegramBot {
             .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
             .await?
         {
+            if referendum.is_terminated {
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        "Referendum has been terminated. Cannot remove vote.",
+                    )
+                    .await?;
+                return Ok(());
+            }
             referendum
         } else {
             self.telegram_client
@@ -588,6 +605,16 @@ impl TelegramBot {
             .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
             .await?
         {
+            if referendum.is_terminated {
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        "Referendum has been terminated. Cannot remove vote.",
+                    )
+                    .await?;
+                return Ok(());
+            }
             referendum
         } else {
             self.telegram_client
@@ -721,6 +748,16 @@ impl TelegramBot {
             .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
             .await?
         {
+            if referendum.is_terminated {
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        "Referendum has been terminated. Cannot remove vote.",
+                    )
+                    .await?;
+                return Ok(());
+            }
             referendum
         } else {
             self.telegram_client

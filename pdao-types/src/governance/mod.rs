@@ -80,4 +80,5 @@ pub struct Referendum {
     pub opensquare_cid: Option<String>,
     pub opensquare_post_uid: Option<String>,
     pub last_vote_id: Option<u32>,
+    pub is_terminated: bool,
 }
