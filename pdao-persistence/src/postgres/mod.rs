@@ -3,6 +3,7 @@ use sqlx::{Pool, Postgres, Transaction};
 use std::time::Duration;
 
 pub mod referendum;
+pub mod vote;
 
 pub struct PostgreSQLStorage {
     connection_pool: Pool<Postgres>,

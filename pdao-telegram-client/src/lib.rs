@@ -1,6 +1,7 @@
 use frankenstein::{
-    AsyncApi, AsyncTelegramApi, ChatId, CreateForumTopicParams, GetUpdatesParams,
-    LinkPreviewOptions, Message, MethodResponse, ParseMode, SendMessageParams, Update,
+    client_reqwest::Bot, AsyncTelegramApi, ChatId, CreateForumTopicParams, EditForumTopicParams,
+    GetUpdatesParams, LinkPreviewOptions, Message, MethodResponse, ParseMode, SendMessageParams,
+    Update,
 };
 use pdao_config::Config;
 use pdao_types::governance::opensquare::OpenSquareNewProposalResponse;
@@ -9,13 +10,13 @@ use pdao_types::governance::track::Track;
 use pdao_types::substrate::chain::Chain;
 
 pub struct TelegramClient {
-    telegram_api: AsyncApi,
+    telegram_api: Bot,
 }
 
 impl TelegramClient {
     pub fn new(config: &Config) -> Self {
         Self {
-            telegram_api: AsyncApi::new(&config.telegram.api_token),
+            telegram_api: Bot::new(&config.telegram.api_token),
         }
     }
 
@@ -154,5 +155,35 @@ impl TelegramClient {
             })
             .await?;
         Ok(response)
+    }
+
+    pub async fn update_referendum_topic_name(
+        &self,
+        chat_id: i64,
+        thread_id: i32,
+        name: &str,
+        maybe_status_text: Option<&str>,
+        status_emoji: &str,
+    ) -> anyhow::Result<bool> {
+        let stickers = self.telegram_api.get_forum_topic_icon_stickers().await?;
+        let mut checkmark_emoji_id = None;
+        for sticker in stickers.result.iter() {
+            if sticker.emoji == Some(status_emoji.to_string()) {
+                checkmark_emoji_id = sticker.custom_emoji_id.clone();
+            }
+        }
+
+        let params = EditForumTopicParams::builder()
+            .chat_id(ChatId::Integer(chat_id))
+            .message_thread_id(thread_id)
+            .maybe_icon_custom_emoji_id(checkmark_emoji_id)
+            .name(if let Some(status_text) = maybe_status_text {
+                format!("[{status_text}] {name}")
+            } else {
+                name.to_string()
+            })
+            .build();
+        let result = self.telegram_api.edit_forum_topic(&params).await?;
+        Ok(result.result)
     }
 }

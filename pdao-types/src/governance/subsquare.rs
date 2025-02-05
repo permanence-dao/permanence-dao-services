@@ -1,6 +1,6 @@
 use crate::governance::ReferendumStatus;
 use crate::substrate::account_id::AccountId;
-use frame_support::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -162,4 +162,37 @@ pub struct SubSquareReferendumList {
     pub total: u32,
     pub page: u32,
     pub page_size: u32,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct SubSquareCommentIndexerData {
+    pub pallet: String,
+    pub object: String,
+    pub proposed_height: u64,
+    pub id: u32,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct SubSquareCommentData {
+    pub action: String,
+    pub indexer: SubSquareCommentIndexerData,
+    pub content: String,
+    #[serde(rename = "content_format")]
+    pub content_format: String,
+    pub timestamp: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubSquareCommentRequest {
+    pub entity: SubSquareCommentData,
+    pub address: String,
+    pub signature: String,
+    pub signer_wallet: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubSquareCommentResponse {
+    pub cid: String,
 }

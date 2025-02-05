@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 use pdao_config::Config;
 use pdao_service::Service;
 
+use pdao_openai_client::OpenAIClient;
 use pdao_opensquare_client::OpenSquareClient;
 use pdao_persistence::postgres::PostgreSQLStorage;
 use pdao_referendum_importer::{ReferendumImportError, ReferendumImporter};
@@ -11,6 +12,7 @@ use pdao_subsquare_client::SubSquareClient;
 use pdao_telegram_client::TelegramClient;
 use pdao_types::governance::ReferendumStatus;
 use pdao_types::substrate::chain::Chain;
+use pdao_voter::Voter;
 use regex::Regex;
 
 mod command;
@@ -29,7 +31,9 @@ pub struct TelegramBot {
     opensquare_client: OpenSquareClient,
     subsquare_client: SubSquareClient,
     telegram_client: TelegramClient,
+    openai_client: OpenAIClient,
     referendum_importer: ReferendumImporter,
+    voter: Voter,
 }
 
 impl TelegramBot {
@@ -39,7 +43,9 @@ impl TelegramBot {
             opensquare_client: OpenSquareClient::new(&CONFIG)?,
             subsquare_client: SubSquareClient::new(&CONFIG)?,
             telegram_client: TelegramClient::new(&CONFIG),
+            openai_client: OpenAIClient::new(&CONFIG)?,
             referendum_importer: ReferendumImporter::new(&CONFIG).await?,
+            voter: Voter::new(&CONFIG).await?,
         })
     }
 
@@ -47,6 +53,7 @@ impl TelegramBot {
         &self,
         chat_id: i64,
         thread_id: Option<i32>,
+        username: &str,
         command: &str,
         args: &[String],
     ) -> anyhow::Result<()> {
@@ -57,21 +64,43 @@ impl TelegramBot {
             args,
         );
         match command {
+            "/archive" => {
+                // unimplemented
+            }
+            "/forceaye" => {
+                self.process_force_vote_command(chat_id, thread_id, username, true)
+                    .await?;
+            }
+            "/forcenay" => {
+                self.process_force_vote_command(chat_id, thread_id, username, false)
+                    .await?;
+            }
             "/import" => {
                 self.process_import_command(chat_id, thread_id, args)
                     .await?;
             }
-            "/archive" => {
-                // unimplemented
-            }
-            "/vote" => {
-                // unimplemented
-            }
-            "/update" => {
-                // unimplemented
+            "/removevote" => {
+                self.process_remove_vote_command(chat_id, thread_id, username)
+                    .await?
             }
             "/status" => {
                 self.process_status_command(chat_id, thread_id).await?;
+            }
+            "/terminate" => {
+                self.process_terminate_command(chat_id, thread_id, username, "DONE", "✅")
+                    .await?;
+            }
+            "/timeout" => {
+                self.process_terminate_command(chat_id, thread_id, username, "MISSED", "🏁")
+                    .await?;
+            }
+            "/vote" => {
+                self.process_vote_command(chat_id, thread_id, username, true)
+                    .await?;
+            }
+            "/votewithoutfeedback" => {
+                self.process_vote_command(chat_id, thread_id, username, false)
+                    .await?;
             }
             _ => {
                 // err - send message
@@ -84,6 +113,7 @@ impl TelegramBot {
         &self,
         chat_id: i64,
         thread_id: Option<i32>,
+        username: &str,
         text: &str,
     ) -> anyhow::Result<()> {
         if CMD_REGEX.is_match(text) {
@@ -100,7 +130,7 @@ impl TelegramBot {
                 )
             };
             let command = command.replace(&CONFIG.telegram.bot_username, "");
-            self.process_command(chat_id, thread_id, &command, &arguments)
+            self.process_command(chat_id, thread_id, username, &command, &arguments)
                 .await?;
         }
         Ok(())
@@ -108,9 +138,16 @@ impl TelegramBot {
 
     async fn process_message(&self, message: &Message) -> anyhow::Result<()> {
         // text message
-        if let Some(text) = &message.text {
-            self.process_text_message(message.chat.id, message.message_thread_id, text)
+        if let Some(Some(username)) = &message.from.as_ref().map(|a| a.username.as_ref()) {
+            if let Some(text) = &message.text {
+                self.process_text_message(
+                    message.chat.id,
+                    message.message_thread_id,
+                    username,
+                    text,
+                )
                 .await?;
+            }
         }
         Ok(())
     }

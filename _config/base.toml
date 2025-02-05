@@ -35,7 +35,15 @@ api_token = "telegram_api_token"
 chat_id = -145
 bot_username = "@permanence_dao_bot"
 
+[openai]
+organization= "openai_organization"
+project = "openai_project"
+api_key = "openai_api_key"
+
 [voter]
+voting_admin_usernames = "usernames_separated_by_comma"
+real_account_address = "address"
+proxy_account_seed_phrase = "seed_phrase"
 sleep_seconds = 1800
 min_referendum_id = 1200
 member_count = 10

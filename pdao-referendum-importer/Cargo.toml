@@ -10,7 +10,6 @@ anyhow = { workspace = true }
 pdao-config = { path = "../pdao-config" }
 pdao-opensquare-client = { path = "../pdao-opensquare-client" }
 pdao-persistence = { path = "../pdao-persistence" }
-pdao-substrate-client = { path = "../pdao-substrate-client" }
 pdao-subsquare-client = { path = "../pdao-subsquare-client" }
 pdao-telegram-client = { path = "../pdao-telegram-client" }
 pdao-types = { path = "../pdao-types" }

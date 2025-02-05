@@ -186,3 +186,28 @@ pub struct OpenSquareReferendumVotesResponse {
     pub page: u32,
     pub page_size: u32,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSquareTerminateProposalRequestData {
+    pub action: String,
+    pub proposal_cid: String,
+    #[serde(rename = "terminatorNetwork")]
+    pub chain: String,
+    pub version: String,
+    pub timestamp: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSquareTerminateProposalRequest {
+    pub data: OpenSquareTerminateProposalRequestData,
+    pub address: String,
+    pub signature: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSquareTerminateProposalResponse {
+    pub result: bool,
+}

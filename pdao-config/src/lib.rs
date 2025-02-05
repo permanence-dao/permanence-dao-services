@@ -62,7 +62,17 @@ pub struct TelegramConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct OpenAPIConfig {
+    pub organization: String,
+    pub project: String,
+    pub api_key: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct VoterConfig {
+    pub voting_admin_usernames: String,
+    pub real_account_address: String,
+    pub proxy_account_seed_phrase: String,
     pub sleep_seconds: u64,
     pub min_referendum_id: u32,
     pub member_count: u32,
@@ -102,6 +112,7 @@ pub struct Config {
     pub metrics: MetricsConfig,
     pub referendum_importer: ReferendumImporterConfig,
     pub telegram: TelegramConfig,
+    pub openai: OpenAPIConfig,
     pub voter: VoterConfig,
 }
 

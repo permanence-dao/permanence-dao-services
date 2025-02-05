@@ -6,15 +6,15 @@ rust-version = "1.77.2"
 
 [dependencies]
 anyhow = { workspace = true }
-chrono = { version = "0.4", default-features = true, features = ["serde"] }
+chrono = { workspace = true, default-features = true, features = ["serde"] }
 enum-iterator = "2.0"
 frame-support = { workspace = true }
 hex = { workspace = true }
-pallet-identity = "38.0"
+pallet-identity = "39.0"
 parity-scale-codec = "3.6"
-pallet-balances = "39.0"
+pallet-balances = "40.0"
 pdao-config = { path = "../pdao-config" }
-frame-system = "38.0"
+frame-system = "39.1"
 serde = { workspace = true, features = ["derive"] }
 sp-core = { workspace = true }
 thiserror = { workspace = true }

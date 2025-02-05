@@ -1,7 +1,10 @@
+use chrono::Utc;
 use pdao_config::Config;
 use pdao_types::governance::opensquare::{
     OpenSquareNewProposal, OpenSquareNewProposalRequest, OpenSquareNewProposalResponse,
     OpenSquareReferendum, OpenSquareReferendumVote, OpenSquareReferendumVotesResponse,
+    OpenSquareTerminateProposalRequest, OpenSquareTerminateProposalRequestData,
+    OpenSquareTerminateProposalResponse,
 };
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::governance::track::Track;
@@ -66,7 +69,7 @@ impl OpenSquareClient {
         Ok(Some(votes))
     }
 
-    pub async fn create_opensquare_proposal(
+    pub async fn create_new_opensquare_proposal(
         &self,
         chain: &Chain,
         block_height: u64,
@@ -133,7 +136,10 @@ impl OpenSquareClient {
         let status_code = response.status();
         let response_text = response.text().await?;
         if !status_code.is_success() {
-            log::error!("Error response from OpenSquare proposal: {}", response_text);
+            let error_message =
+                format!("Error response from OpenSquare proposal: {}", response_text);
+            log::error!("{error_message}");
+            return Err(anyhow::Error::msg(error_message));
         }
         let response: OpenSquareNewProposalResponse = serde_json::from_str(&response_text)?;
         log::info!(
@@ -143,5 +149,69 @@ impl OpenSquareClient {
             response.cid,
         );
         Ok(response)
+    }
+
+    pub async fn terminate_opensquare_proposal(
+        &self,
+        chain: &Chain,
+        cid: &str,
+    ) -> anyhow::Result<bool> {
+        log::info!(
+            "Terminate OpenSquare proposal for {} referendum with CID {cid}.",
+            chain.token_ticker,
+        );
+        let pair = sr25519::Pair::from_string(&self.config.substrate.gov_proxy_seed_phrase, None)
+            .expect("Invalid seed phrase");
+        let address = pair
+            .public()
+            .to_ss58check_with_version(Ss58AddressFormat::from(chain.ss58_prefix));
+        let request_data = OpenSquareTerminateProposalRequestData {
+            action: "terminate".to_string(),
+            proposal_cid: cid.to_string(),
+            chain: chain.chain.clone(),
+            version: "2".to_string(),
+            timestamp: (Utc::now().timestamp_millis() / 1000) as u64,
+        };
+        let proposal_json = serde_json::to_string(&request_data)?;
+        let signature = pair.sign(proposal_json.as_bytes());
+        let signature_hex = format!("0x{}", hex::encode(signature));
+        let request = OpenSquareTerminateProposalRequest {
+            data: request_data,
+            address: address.clone(),
+            signature: signature_hex,
+        };
+        let response_result = self
+            .http_client
+            .post(format!(
+                "https://voting.opensquare.io/api/{}/terminate",
+                self.config.referendum_importer.opensquare_space,
+            ))
+            .json(&request)
+            .send()
+            .await;
+        let response = match response_result {
+            Ok(response) => response,
+            Err(error) => {
+                log::error!("Error while terminating OpenSquare proposal: {}", error);
+                return Err(error.into());
+            }
+        };
+        let status_code = response.status();
+        let response_text = response.text().await?;
+        if !status_code.is_success() {
+            let error_message = format!(
+                "Error response from OpenSquare for termination: {}",
+                response_text
+            );
+            log::error!("{error_message}");
+            return Err(anyhow::Error::msg(error_message));
+        }
+        let response: OpenSquareTerminateProposalResponse = serde_json::from_str(&response_text)?;
+        log::info!(
+            "Terminated OpenSquare proposal for {} referendum with CID {cid}: {}",
+            chain.token_ticker,
+            response.result,
+        );
+        Ok(true)
     }
 }

@@ -9,27 +9,18 @@ pub struct VotingPolicy {
 impl VotingPolicy {
     pub fn voting_policy_for_track(track: Track) -> Option<VotingPolicy> {
         match track {
-            Track::Root => Some(Self {
-                participation_percent: 0,
-                quorum_percent: 60,
-                majority_percent: 57,
-            }),
-            Track::WhitelistedCaller => Some(Self {
-                participation_percent: 0,
-                quorum_percent: 60,
-                majority_percent: 57,
-            }),
-            Track::WishForChange => Some(Self {
-                participation_percent: 0,
-                quorum_percent: 60,
-                majority_percent: 57,
-            }),
-            Track::Treasurer => Some(Self {
-                participation_percent: 0,
-                quorum_percent: 60,
-                majority_percent: 57,
-            }),
-            Track::FellowshipAdmin => Some(Self {
+            Track::Root
+            | Track::WhitelistedCaller
+            | Track::WishForChange
+            | Track::Treasurer
+            | Track::FellowshipAdmin
+            | Track::StakingAdmin
+            | Track::LeaseAdmin
+            | Track::GeneralAdmin
+            | Track::AuctionAdmin
+            | Track::ReferendumCanceller
+            | Track::ReferendumKiller
+            | Track::BigSpender => Some(Self {
                 participation_percent: 0,
                 quorum_percent: 60,
                 majority_percent: 57,
@@ -54,12 +45,6 @@ impl VotingPolicy {
                 quorum_percent: 50,
                 majority_percent: 50,
             }),
-            Track::BigSpender => Some(Self {
-                participation_percent: 0,
-                quorum_percent: 60,
-                majority_percent: 57,
-            }),
-            _ => None,
         }
     }
 }

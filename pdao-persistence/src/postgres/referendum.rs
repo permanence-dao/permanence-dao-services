@@ -18,6 +18,7 @@ type ReferendumRecord = (
     i32,
     Option<String>,
     Option<String>,
+    Option<i32>,
 );
 
 fn referendum_record_into_referendum(record: &ReferendumRecord) -> anyhow::Result<Referendum> {
@@ -35,6 +36,7 @@ fn referendum_record_into_referendum(record: &ReferendumRecord) -> anyhow::Resul
         telegram_intro_message_id: record.10,
         opensquare_cid: record.11.clone(),
         opensquare_post_uid: record.12.clone(),
+        last_vote_id: record.13.map(|id| id as u32),
     })
 }
 
@@ -81,7 +83,7 @@ impl PostgreSQLStorage {
     ) -> anyhow::Result<Option<Referendum>> {
         let maybe_record: Option<ReferendumRecord> = sqlx::query_as(
             r#"
-            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id
             FROM pdao_referendum
             WHERE network_id = $1 AND index = $2
             "#,
@@ -104,7 +106,7 @@ impl PostgreSQLStorage {
     ) -> anyhow::Result<Option<Referendum>> {
         let maybe_record: Option<ReferendumRecord> = sqlx::query_as(
             r#"
-            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id
             FROM pdao_referendum
             WHERE telegram_chat_id = $1 AND telegram_topic_id = $2
             "#,

@@ -13,11 +13,17 @@ CREATE TABLE IF NOT EXISTS pdao_referendum
     telegram_intro_message_id   INT NOT NULL,
     opensquare_cid              VARCHAR(64) NOT NULL,
     opensquare_post_uid         VARCHAR(64) NOT NULL,
+    last_vote_id                INT,
     created_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     CONSTRAINT pdao_referendum_fk_network
         FOREIGN KEY (network_id)
             REFERENCES pdao_network (id)
+            ON DELETE RESTRICT
+            ON UPDATE CASCADE,
+    CONSTRAINT pdao_referendum_fk_vote
+        FOREIGN KEY (last_vote_id)
+            REFERENCES pdao_vote (id)
             ON DELETE RESTRICT
             ON UPDATE CASCADE,
     CONSTRAINT pdao_referendum_u_index UNIQUE (network_id, index)

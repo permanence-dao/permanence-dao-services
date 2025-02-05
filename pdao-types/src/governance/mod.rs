@@ -79,4 +79,5 @@ pub struct Referendum {
     pub telegram_intro_message_id: i32,
     pub opensquare_cid: Option<String>,
     pub opensquare_post_uid: Option<String>,
+    pub last_vote_id: Option<u32>,
 }

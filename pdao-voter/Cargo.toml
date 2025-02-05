@@ -7,4 +7,9 @@ authors = ["kukabi <kutsal@helikon.io>"]
 
 [dependencies]
 anyhow = { workspace = true }
-subxt = "0.38.0"
+hex = { workspace = true }
+pdao-config = { path = "../pdao-config" }
+pdao-substrate-client = { path = "../pdao-substrate-client" }
+pdao-types = { path = "../pdao-types" }
+subxt = { workspace = true }
+subxt-signer = { workspace = true }
