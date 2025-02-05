@@ -170,7 +170,7 @@ Kind regards,<br>Permanence DAO"#,
             },
             content,
             content_format: "subsquare_md".to_string(),
-            timestamp: (Utc::now().timestamp_millis() / 1000) as u64,
+            timestamp: Utc::now().timestamp_millis() as u64,
         };
         let request_data_json = serde_json::to_string(&request_data)?;
         let signature = pair.sign(request_data_json.as_bytes());
