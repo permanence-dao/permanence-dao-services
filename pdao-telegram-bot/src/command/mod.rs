@@ -3,6 +3,7 @@ use pdao_referendum_importer::ReferendumImportError;
 use pdao_types::governance::opensquare::OpenSquareVote;
 use pdao_types::governance::policy::VotingPolicy;
 use pdao_types::governance::ReferendumStatus;
+use pdao_types::substrate::account_id::AccountId;
 use pdao_types::substrate::chain::Chain;
 use std::str::FromStr;
 
@@ -975,6 +976,111 @@ impl TelegramBot {
         } else {
             message = format!("{message}\nFeedback skipped.",);
         }
+        self.telegram_client
+            .send_message(chat_id, Some(thread_id), &message)
+            .await?;
+        Ok(())
+    }
+
+    pub(crate) async fn process_notify_command(
+        &self,
+        chat_id: i64,
+        thread_id: Option<i32>,
+        username: &str,
+    ) -> anyhow::Result<()> {
+        if !CONFIG.voter.voting_admin_usernames.contains(username) {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    thread_id,
+                    "This command can only be called by a voting admin.",
+                )
+                .await?;
+            return Ok(());
+        }
+        let thread_id = if let Some(thread_id) = thread_id {
+            thread_id
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    thread_id,
+                    "This command can only be called from a referendum topic.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let db_referendum = if let Some(referendum) = self
+            .postgres
+            .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
+            .await?
+        {
+            if referendum.is_terminated {
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        "Referendum has been terminated. Cannot remove vote.",
+                    )
+                    .await?;
+                return Ok(());
+            }
+            referendum
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "Referendum not found in the storage. Contact admin.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let cid = if let Some(cid) = &db_referendum.opensquare_cid {
+            cid
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "OpenSquare CID not found in the referendum record. Contact admin.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let opensquare_votes = if let Some(opensquare_votes) =
+            self.opensquare_client.fetch_referendum_votes(cid).await?
+        {
+            opensquare_votes
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "Referendum not found on OpenSquare by CID. Contact admin.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let voted_members: Vec<AccountId> = opensquare_votes.iter().map(|v| v.voter).collect();
+        let non_voted_member_telegram_usernames: Vec<String> = self
+            .postgres
+            .get_all_members()
+            .await?
+            .iter()
+            .filter(|m| !voted_members.contains(&m.polkadot_address))
+            .map(|m| format!("@{}", m.telegram_username))
+            .collect();
+        let message = if non_voted_member_telegram_usernames.is_empty() {
+            "All members have voted.".to_string()
+        } else {
+            format!(
+                "🔔 {} please vote!",
+                non_voted_member_telegram_usernames
+                    .join(", ")
+                    .replace("_", "\\_"),
+            )
+        };
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)
             .await?;

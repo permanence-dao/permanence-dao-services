@@ -34,6 +34,7 @@ opensquare_space = "permanence"
 api_token = "telegram_api_token"
 chat_id = -145
 bot_username = "@permanence_dao_bot"
+bot_chat_thread_id = 15
 
 [openai]
 organization= "openai_organization"

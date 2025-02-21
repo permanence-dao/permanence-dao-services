@@ -26,6 +26,8 @@ pub struct OpenAIMessage {
 pub struct OpenAICompletionRequest {
     pub model: OpenAIModel,
     pub messages: Vec<OpenAIMessage>,
+    pub store: bool,
+    pub temperature: f32,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -2,6 +2,7 @@ use pdao_config::Config;
 use sqlx::{Pool, Postgres, Transaction};
 use std::time::Duration;
 
+pub mod member;
 pub mod referendum;
 pub mod vote;
 

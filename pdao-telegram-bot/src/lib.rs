@@ -102,6 +102,10 @@ impl TelegramBot {
                 self.process_vote_command(chat_id, thread_id, username, false)
                     .await?;
             }
+            "/notify" => {
+                self.process_notify_command(chat_id, thread_id, username)
+                    .await?;
+            }
             _ => {
                 // err - send message
             }
@@ -132,7 +136,14 @@ impl TelegramBot {
             let command = command.replace(&CONFIG.telegram.bot_username, "");
             self.process_command(chat_id, thread_id, username, &command, &arguments)
                 .await?;
-        }
+        } /* else if thread_id == Some(CONFIG.telegram.bot_chat_thread_id) {
+              let response = self.openai_client.fetch_chat_response(username, text).await?;
+              self.telegram_client.send_message(
+                  chat_id,
+                  thread_id,
+                  &response,
+              ).await?;
+          } */
         Ok(())
     }
 
