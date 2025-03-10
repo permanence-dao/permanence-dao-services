@@ -170,6 +170,7 @@ impl TelegramBot {
                     return;
                 }
                 if let Err(error) = self.process_message(message).await {
+                    let thread_id = message.message_thread_id;
                     let message = format!(
                         "Error while processing message #{}: {:?}",
                         message.message_id, error,
@@ -177,7 +178,7 @@ impl TelegramBot {
                     log::error!("{message}");
                     let _ = self
                         .telegram_client
-                        .send_message(CONFIG.telegram.chat_id, None, &message)
+                        .send_message(CONFIG.telegram.chat_id, thread_id, &message)
                         .await;
                 }
             }

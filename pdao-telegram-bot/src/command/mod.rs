@@ -277,10 +277,10 @@ impl TelegramBot {
         let participation = aye_count + nay_count + abstain_count;
         let participation_percent = (participation * 100) / CONFIG.voter.member_count;
         let quorum_percent = (aye_count * 100) / CONFIG.voter.member_count;
-        let aye_percent = if participation == 0 {
+        let aye_percent = if (aye_count + nay_count) == 0 {
             0
         } else {
-            (aye_count * 100) / participation
+            (aye_count * 100) / (aye_count + nay_count)
         };
         message = if participation_percent < voting_policy.participation_percent as u32 {
             format!(
@@ -861,10 +861,10 @@ impl TelegramBot {
         let participation = aye_count + nay_count + abstain_count;
         let participation_percent = (participation * 100) / CONFIG.voter.member_count;
         let quorum_percent = (aye_count * 100) / CONFIG.voter.member_count;
-        let aye_percent = if participation == 0 {
+        let aye_percent = if (aye_count + nay_count) == 0 {
             0
         } else {
-            (aye_count * 100) / participation
+            (aye_count * 100) / (aye_count + nay_count)
         };
         let vote: Option<bool>;
         let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");

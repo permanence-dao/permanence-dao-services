@@ -97,12 +97,12 @@ impl SubSquareClient {
             | Track::ReferendumCanceller
             | Track::ReferendumKiller => format!("{}% quorum", policy.quorum_percent),
             Track::SmallTipper | Track::BigTipper | Track::SmallSpender => format!(
-                "{}% participation and simple majority of all voters",
+                "{}% participation and simple majority of non-abstain voters",
                 policy.participation_percent
             ),
             Track::MediumSpender => {
                 format!(
-                    "{}% quorum and simple majority of all voters",
+                    "{}% quorum and simple majority of non-abstain voters",
                     policy.quorum_percent
                 )
             }
@@ -122,7 +122,7 @@ impl SubSquareClient {
         let content = format!(
             r#"Dear Proposer,
 
-Thank you for your proposal. Our {} vote on this proposal is **{}**.
+Thank you for your proposal. Our **{}** vote on this proposal is **{}**.
 
 The **{}** track requires **{policy_summary}** according to our voting policy. This proposal has received **{} aye and {} nay** votes from **{} members**{abstain_summary}. Below is a summary of our members' comments:
 

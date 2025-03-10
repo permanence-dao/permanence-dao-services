@@ -42,7 +42,7 @@ impl PostgreSQLStorage {
     pub async fn remove_vote(&self, vote_id: u32) -> anyhow::Result<Option<i32>> {
         let maybe_result: Option<(i32,)> = sqlx::query_as(
             r#"
-            UPDATE pda_vote SET is_removed = true
+            UPDATE pdao_vote SET is_removed = true
             WHERE id = $1
             RETURNING id
             "#,
