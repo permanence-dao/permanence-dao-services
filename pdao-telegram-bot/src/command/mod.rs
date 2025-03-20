@@ -1116,7 +1116,6 @@ impl TelegramBot {
             return Ok(());
         };
 
-        use std::fs;
         use std::process::Command;
         let output = Command::new(&CONFIG.archive.python_bin_path) // Use the Python inside `venv`
             .arg(&CONFIG.archive.script_path)
@@ -1137,10 +1136,25 @@ impl TelegramBot {
             return Ok(());
         };
         let file_path = file_path.trim();
-        let contents =
-            fs::read_to_string(file_path).expect("Should have been able to read the file");
-        log::info!("Archived file");
-        log::info!("{contents}");
+        let archive_thread_id =
+            if let Some(archive_thread_id) = self.postgres.get_archive_thread_id().await? {
+                archive_thread_id
+            } else {
+                let archive_thread_id = self.telegram_client.create_archive_topic(&CONFIG).await?;
+                self.postgres
+                    .set_archive_thread_id(archive_thread_id)
+                    .await?;
+                archive_thread_id
+            };
+        log::info!("Archived file: {}", file_path);
+        self.telegram_client
+            .upload_file(file_path, CONFIG.telegram.chat_id, archive_thread_id)
+            .await?;
+        log::info!("Uploaded archive to Telegram.");
+        self.telegram_client
+            .delete_referendum_topic(CONFIG.telegram.chat_id, thread_id)
+            .await?;
+        log::info!("Deleted Telegram topic.");
         Ok(())
     }
 }

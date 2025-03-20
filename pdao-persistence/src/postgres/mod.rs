@@ -4,6 +4,7 @@ use std::time::Duration;
 
 pub mod member;
 pub mod referendum;
+pub mod settings;
 pub mod vote;
 
 pub struct PostgreSQLStorage {

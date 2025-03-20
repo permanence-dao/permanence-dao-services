@@ -25,7 +25,7 @@ chrono = "0.4"
 config = "0.15"
 env_logger = "0.11"
 frame-support = "39.0"
-frame-metadata = "18"
+frame-metadata = "20.0"
 frankenstein = { version = "0.39", default-features = false, features = ["client-reqwest"] }
 hex = "0.4"
 jsonrpsee = "0.24"

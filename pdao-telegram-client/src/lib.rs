@@ -1,7 +1,8 @@
+use frankenstein::SendPhotoParams;
 use frankenstein::{
-    client_reqwest::Bot, AsyncTelegramApi, ChatId, CreateForumTopicParams, EditForumTopicParams,
-    GetUpdatesParams, LinkPreviewOptions, Message, MethodResponse, ParseMode, SendMessageParams,
-    Update,
+    client_reqwest::Bot, AsyncTelegramApi, ChatId, CreateForumTopicParams, DeleteForumTopicParams,
+    EditForumTopicParams, GetUpdatesParams, LinkPreviewOptions, Message, MethodResponse, ParseMode,
+    SendMessageParams, Update,
 };
 use pdao_config::Config;
 use pdao_types::governance::opensquare::OpenSquareNewProposalResponse;
@@ -185,5 +186,60 @@ impl TelegramClient {
             .build();
         let result = self.telegram_api.edit_forum_topic(&params).await?;
         Ok(result.result)
+    }
+
+    pub async fn delete_referendum_topic(
+        &self,
+        chat_id: i64,
+        thread_id: i32,
+    ) -> anyhow::Result<()> {
+        let params = DeleteForumTopicParams::builder()
+            .chat_id(chat_id)
+            .message_thread_id(thread_id)
+            .build();
+        self.telegram_api.delete_forum_topic(&params).await?;
+        Ok(())
+    }
+
+    pub async fn upload_file(
+        &self,
+        file_path: &str,
+        chat_id: i64,
+        thread_id: i32,
+    ) -> anyhow::Result<()> {
+        let file = std::path::PathBuf::from(file_path);
+        let params = SendPhotoParams::builder()
+            .chat_id(chat_id)
+            .message_thread_id(thread_id)
+            .photo(file)
+            .build();
+        self.telegram_api.send_photo(&params).await?;
+        Ok(())
+    }
+
+    pub async fn create_archive_topic(&self, config: &Config) -> anyhow::Result<i32> {
+        log::info!("Create archive topic.");
+        let stickers = self.telegram_api.get_forum_topic_icon_stickers().await?;
+        let mut briefcase_emoji_id = None;
+        for sticker in stickers.result.iter() {
+            if sticker.emoji == Some("💼".to_string()) {
+                briefcase_emoji_id = sticker.custom_emoji_id.clone();
+            }
+        }
+
+        let create_topic_response = self
+            .telegram_api
+            .create_forum_topic(&CreateForumTopicParams {
+                chat_id: ChatId::Integer(config.telegram.chat_id),
+                name: "Archive".to_string(),
+                icon_color: None,
+                icon_custom_emoji_id: briefcase_emoji_id.clone(),
+            })
+            .await?;
+        log::info!(
+            "Created Telegram archive topic with thread id {}.",
+            create_topic_response.result.message_thread_id,
+        );
+        Ok(create_topic_response.result.message_thread_id)
     }
 }
