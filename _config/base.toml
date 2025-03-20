@@ -31,6 +31,8 @@ voter_port = 11011
 opensquare_space = "permanence"
 
 [telegram]
+api_id = "telegram_api_id"
+api_hash = "telegram_api_hash"
 api_token = "telegram_api_token"
 chat_id = -145
 bot_username = "@permanence_dao_bot"
@@ -48,3 +50,8 @@ proxy_account_seed_phrase = "seed_phrase"
 sleep_seconds = 1800
 min_referendum_id = 1200
 member_count = 10
+
+[archive]
+python_bin_path = "/path/to/venv/bin/python3"
+script_path = "/path/to/archive_topic.py"
+temp_file_dir_path = "/path/to/temp/file/dir"

@@ -65,7 +65,8 @@ impl TelegramBot {
         );
         match command {
             "/archive" => {
-                // unimplemented
+                self.process_archive_command(chat_id, thread_id, username)
+                    .await?;
             }
             "/forceaye" => {
                 self.process_force_vote_command(chat_id, thread_id, username, true)

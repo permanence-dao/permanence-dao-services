@@ -56,6 +56,8 @@ pub struct ReferendumImporterConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct TelegramConfig {
+    pub api_id: String,
+    pub api_hash: String,
     pub api_token: String,
     pub chat_id: i64,
     pub bot_username: String,
@@ -104,6 +106,13 @@ pub struct MetricsConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct ArchiveConfig {
+    pub python_bin_path: String,
+    pub script_path: String,
+    pub temp_file_dir_path: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct Config {
     pub common: CommonConfig,
     pub http: HTTPConfig,
@@ -115,6 +124,7 @@ pub struct Config {
     pub telegram: TelegramConfig,
     pub openai: OpenAPIConfig,
     pub voter: VoterConfig,
+    pub archive: ArchiveConfig,
 }
 
 impl Config {

@@ -1086,4 +1086,51 @@ impl TelegramBot {
             .await?;
         Ok(())
     }
+
+    pub(crate) async fn process_archive_command(
+        &self,
+        chat_id: i64,
+        thread_id: Option<i32>,
+        username: &str,
+    ) -> anyhow::Result<()> {
+        if !CONFIG.voter.voting_admin_usernames.contains(username) {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    thread_id,
+                    "This command can only be called by a voting admin.",
+                )
+                .await?;
+            return Ok(());
+        }
+        let thread_id = if let Some(thread_id) = thread_id {
+            thread_id
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    thread_id,
+                    "This command can only be called from a referendum topic.",
+                )
+                .await?;
+            return Ok(());
+        };
+
+        use std::process::Command;
+        let output = Command::new(&CONFIG.archive.python_bin_path) // Use the Python inside `venv`
+            .arg(&CONFIG.archive.script_path)
+            .arg(&CONFIG.telegram.api_id)
+            .arg(&CONFIG.telegram.api_hash)
+            .arg(CONFIG.telegram.chat_id.to_string())
+            .arg(thread_id.to_string())
+            .arg(&CONFIG.archive.temp_file_dir_path)
+            .output()?;
+        let file_path = if output.status.success() {
+            String::from_utf8_lossy(&output.stdout).to_string()
+        } else {
+            return Err(anyhow::Error::msg("Failed to run archive command."));
+        };
+        log::info!("Archived file {file_path}");
+        Ok(())
+    }
 }
