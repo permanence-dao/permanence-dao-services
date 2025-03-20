@@ -1117,6 +1117,16 @@ impl TelegramBot {
         };
 
         use std::process::Command;
+        log::info!(
+            "{} {} {} {} {} {} {}",
+            CONFIG.archive.python_bin_path,
+            CONFIG.archive.script_path,
+            CONFIG.telegram.api_id,
+            CONFIG.telegram.api_hash,
+            CONFIG.telegram.chat_id.to_string(),
+            thread_id.to_string(),
+            CONFIG.archive.temp_file_dir_path,
+        );
         let output = Command::new(&CONFIG.archive.python_bin_path) // Use the Python inside `venv`
             .arg(&CONFIG.archive.script_path)
             .arg(&CONFIG.telegram.api_id)
