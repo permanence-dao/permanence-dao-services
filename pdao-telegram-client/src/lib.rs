@@ -1,8 +1,7 @@
-use frankenstein::SendPhotoParams;
 use frankenstein::{
     client_reqwest::Bot, AsyncTelegramApi, ChatId, CreateForumTopicParams, DeleteForumTopicParams,
     EditForumTopicParams, GetUpdatesParams, LinkPreviewOptions, Message, MethodResponse, ParseMode,
-    SendMessageParams, Update,
+    SendDocumentParams, SendMessageParams, Update,
 };
 use pdao_config::Config;
 use pdao_types::governance::opensquare::OpenSquareNewProposalResponse;
@@ -208,12 +207,12 @@ impl TelegramClient {
         thread_id: i32,
     ) -> anyhow::Result<()> {
         let file = std::path::PathBuf::from(file_path);
-        let params = SendPhotoParams::builder()
+        let params = SendDocumentParams::builder()
             .chat_id(chat_id)
             .message_thread_id(thread_id)
-            .photo(file)
+            .document(file)
             .build();
-        self.telegram_api.send_photo(&params).await?;
+        self.telegram_api.send_document(&params).await?;
         Ok(())
     }
 
