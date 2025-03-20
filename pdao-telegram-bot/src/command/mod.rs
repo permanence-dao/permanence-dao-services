@@ -1125,10 +1125,13 @@ impl TelegramBot {
             .arg(thread_id.to_string())
             .arg(&CONFIG.archive.temp_file_dir_path)
             .output()?;
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let file_path = if output.status.success() {
-            String::from_utf8_lossy(&output.stdout).to_string()
+            stdout
         } else {
-            return Err(anyhow::Error::msg("Failed to run archive command."));
+            log::error!("ERR: {stdout}");
+            // return Err(anyhow::Error::msg(format!("Failed to run archive command: {stdout}")));
+            return Ok(());
         };
         log::info!("Archived file {file_path}");
         Ok(())
