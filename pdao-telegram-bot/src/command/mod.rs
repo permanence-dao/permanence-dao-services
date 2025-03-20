@@ -1116,17 +1116,8 @@ impl TelegramBot {
             return Ok(());
         };
 
+        use std::fs;
         use std::process::Command;
-        log::info!(
-            "{} {} {} {} {} {} {}",
-            CONFIG.archive.python_bin_path,
-            CONFIG.archive.script_path,
-            CONFIG.telegram.api_id,
-            CONFIG.telegram.api_hash,
-            CONFIG.telegram.chat_id.to_string(),
-            thread_id.to_string(),
-            CONFIG.archive.temp_file_dir_path,
-        );
         let output = Command::new(&CONFIG.archive.python_bin_path) // Use the Python inside `venv`
             .arg(&CONFIG.archive.script_path)
             .arg(&CONFIG.telegram.api_id)
@@ -1140,11 +1131,16 @@ impl TelegramBot {
         let file_path = if output.status.success() {
             stdout
         } else {
-            log::error!("ERR: {stdout}");
-            // return Err(anyhow::Error::msg(format!("Failed to run archive command: {stdout}")));
+            self.telegram_client
+                .send_message(chat_id, Some(thread_id), "Error while archiving topic.")
+                .await?;
             return Ok(());
         };
-        log::info!("Archived file {file_path}");
+        let file_path = file_path.trim();
+        let contents =
+            fs::read_to_string(file_path).expect("Should have been able to read the file");
+        log::info!("Archived file");
+        log::info!("{contents}");
         Ok(())
     }
 }
