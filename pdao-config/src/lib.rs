@@ -107,6 +107,7 @@ pub struct MetricsConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ArchiveConfig {
+    pub working_dir_path: String,
     pub python_bin_path: String,
     pub script_path: String,
     pub temp_file_dir_path: String,

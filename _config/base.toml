@@ -52,6 +52,7 @@ min_referendum_id = 1200
 member_count = 10
 
 [archive]
+working_dir_path = "/path/to/working/dir"
 python_bin_path = "/path/to/venv/bin/python3"
 script_path = "/path/to/archive_topic.py"
 temp_file_dir_path = "/path/to/temp/file/dir"

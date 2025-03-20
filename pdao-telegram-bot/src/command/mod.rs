@@ -1134,6 +1134,7 @@ impl TelegramBot {
             .arg(CONFIG.telegram.chat_id.to_string())
             .arg(thread_id.to_string())
             .arg(&CONFIG.archive.temp_file_dir_path)
+            .current_dir(&CONFIG.archive.working_dir_path)
             .output()?;
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let file_path = if output.status.success() {
