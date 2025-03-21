@@ -205,12 +205,14 @@ impl TelegramClient {
         file_path: &str,
         chat_id: i64,
         thread_id: i32,
+        caption: Option<&str>,
     ) -> anyhow::Result<()> {
         let file = std::path::PathBuf::from(file_path);
         let params = SendDocumentParams::builder()
             .chat_id(chat_id)
             .message_thread_id(thread_id)
             .document(file)
+            .maybe_caption(caption)
             .build();
         self.telegram_api.send_document(&params).await?;
         Ok(())

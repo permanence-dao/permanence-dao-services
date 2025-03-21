@@ -1115,6 +1115,21 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
+        let title = if let Some(db_referendum) = self
+            .postgres
+            .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
+            .await?
+        {
+            Some(format!(
+                "[{}] {} #{} - {}",
+                db_referendum.track.short_name(),
+                Chain::from_id(db_referendum.network_id).token_ticker,
+                db_referendum.index,
+                db_referendum.title.unwrap_or("N/A".to_string()),
+            ))
+        } else {
+            None
+        };
 
         use std::process::Command;
         let output = Command::new(&CONFIG.archive.python_bin_path) // Use the Python inside `venv`
@@ -1148,7 +1163,12 @@ impl TelegramBot {
             };
         log::info!("Archived file: {}", file_path);
         self.telegram_client
-            .upload_file(file_path, CONFIG.telegram.chat_id, archive_thread_id)
+            .upload_file(
+                file_path,
+                CONFIG.telegram.chat_id,
+                archive_thread_id,
+                title.as_deref(),
+            )
             .await?;
         log::info!("Uploaded archive to Telegram.");
         self.telegram_client

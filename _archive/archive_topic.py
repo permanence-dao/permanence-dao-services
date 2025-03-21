@@ -39,7 +39,7 @@ async def main():
         return
     topic = topics.topics[0]
     # log file prep
-    file_name = "{}_{}".format(topic_id, topic.title.replace(" ", "_").replace(",", "").replace("|", "").lower())
+    file_name = "{}_{}".format(topic_id, topic.title.replace(" ", "_").replace(",", "").replace("|", "").replace("/", "_").lower())
     file_name = file_name[:42]
     file_path = "{}/{}.log".format(file_dir, file_name)
     # file output lines
