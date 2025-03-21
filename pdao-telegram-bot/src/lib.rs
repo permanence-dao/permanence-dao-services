@@ -58,9 +58,10 @@ impl TelegramBot {
         args: &[String],
     ) -> anyhow::Result<()> {
         log::info!(
-            "Process command {} for chat {} with arguments: {:?}",
+            "Process command {} for chat {} thread {:?} with arguments: {:?}",
             command,
             chat_id,
+            thread_id,
             args,
         );
         match command {
