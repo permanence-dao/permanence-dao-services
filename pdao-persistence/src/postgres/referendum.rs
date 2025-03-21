@@ -137,4 +137,23 @@ impl PostgreSQLStorage {
         .await?;
         Ok(maybe_result.map(|r| r.0))
     }
+
+    pub async fn save_referendum_message_archive(
+        &self,
+        referendum_id: u32,
+        message_archive: &str,
+    ) -> anyhow::Result<Option<i32>> {
+        let maybe_result: Option<(i32,)> = sqlx::query_as(
+            r#"
+            UPDATE pdao_referendum SET message_archive = $1
+            WHERE id = $2
+            RETURNING id
+            "#,
+        )
+        .bind(message_archive)
+        .bind(referendum_id as i32)
+        .fetch_optional(&self.connection_pool)
+        .await?;
+        Ok(maybe_result.map(|r| r.0))
+    }
 }

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS pdao_referendum
     opensquare_cid              VARCHAR(64) NOT NULL,
     opensquare_post_uid         VARCHAR(64) NOT NULL,
     last_vote_id                INT,
+    message_archive             TEXT,
     is_terminated               BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),

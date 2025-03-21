@@ -1115,22 +1115,26 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
-        let title = if let Some(db_referendum) = self
+        let (maybe_referendum_id, maybe_title) = if let Some(db_referendum) = self
             .postgres
             .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
             .await?
         {
-            Some(format!(
-                "[{}] {} #{} - {}",
-                db_referendum.track.short_name(),
-                Chain::from_id(db_referendum.network_id).token_ticker,
-                db_referendum.index,
-                db_referendum.title.unwrap_or("N/A".to_string()),
-            ))
+            (
+                Some(db_referendum.id),
+                Some(format!(
+                    "[{}] {} #{} - {}",
+                    db_referendum.track.short_name(),
+                    Chain::from_id(db_referendum.network_id).token_ticker,
+                    db_referendum.index,
+                    db_referendum.title.unwrap_or("N/A".to_string()),
+                )),
+            )
         } else {
-            None
+            (None, None)
         };
 
+        use std::fs;
         use std::process::Command;
         let output = Command::new(&CONFIG.archive.python_bin_path) // Use the Python inside `venv`
             .arg(&CONFIG.archive.script_path)
@@ -1167,10 +1171,17 @@ impl TelegramBot {
                 file_path,
                 CONFIG.telegram.chat_id,
                 archive_thread_id,
-                title.as_deref(),
+                maybe_title.as_deref(),
             )
             .await?;
         log::info!("Uploaded archive to Telegram.");
+        if let Some(referendum_id) = maybe_referendum_id {
+            let message_archive = fs::read_to_string(file_path)?;
+            self.postgres
+                .save_referendum_message_archive(referendum_id, &message_archive)
+                .await?;
+            log::info!("Saved message archive into the database.");
+        }
         self.telegram_client
             .delete_referendum_topic(CONFIG.telegram.chat_id, thread_id)
             .await?;
