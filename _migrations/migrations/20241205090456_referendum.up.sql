@@ -23,11 +23,6 @@ CREATE TABLE IF NOT EXISTS pdao_referendum
             REFERENCES pdao_network (id)
             ON DELETE RESTRICT
             ON UPDATE CASCADE,
-    CONSTRAINT pdao_referendum_fk_vote
-        FOREIGN KEY (last_vote_id)
-            REFERENCES pdao_vote (id)
-            ON DELETE RESTRICT
-            ON UPDATE CASCADE,
     CONSTRAINT pdao_referendum_u_index UNIQUE (network_id, index)
 );
 

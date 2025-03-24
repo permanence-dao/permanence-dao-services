@@ -192,13 +192,12 @@ impl TelegramBot {
     }
 }
 
-async fn import_referenda() -> anyhow::Result<()> {
+async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
     let postgres = PostgreSQLStorage::new(&CONFIG).await?;
     let subsquare_client = SubSquareClient::new(&CONFIG)?;
     let telegram_client = TelegramClient::new(&CONFIG);
     let referendum_importer = ReferendumImporter::new(&CONFIG).await?;
-    let chain = Chain::polkadot();
-    let referenda = subsquare_client.fetch_referenda(&chain, 1, 50).await?;
+    let referenda = subsquare_client.fetch_referenda(chain, 1, 50).await?;
     let mut imported_referendum_count = 0;
     for referendum in referenda.items.iter() {
         if ReferendumStatus::Deciding == referendum.state.status
@@ -222,9 +221,13 @@ async fn import_referenda() -> anyhow::Result<()> {
                     continue;
                 }
                 */
-                log::info!("Try to import referendum {}.", referendum.referendum_index);
+                log::info!(
+                    "Try to import {} referendum {}.",
+                    chain.display,
+                    referendum.referendum_index
+                );
                 if let Err(error) = referendum_importer
-                    .import_referendum(&chain, referendum.referendum_index)
+                    .import_referendum(chain, referendum.referendum_index)
                     .await
                 {
                     let message = match error {
@@ -287,11 +290,16 @@ impl Service for TelegramBot {
         log::info!("Telegram bot started.");
         let mut offset: Option<i64> = None;
 
+        let polkadot = Chain::polkadot();
+        let kusama = Chain::kusama();
         tokio::spawn(async move {
             let delay_seconds = 60 * 30;
             loop {
-                if let Err(err) = import_referenda().await {
-                    log::error!("Import referenda failed: {}", err);
+                if let Err(err) = import_referenda(&polkadot).await {
+                    log::error!("Import Polkadot referenda failed: {}", err);
+                }
+                if let Err(err) = import_referenda(&kusama).await {
+                    log::error!("Import Kusama referenda failed: {}", err);
                 }
                 log::info!("Sleep for {} seconds.", delay_seconds);
                 tokio::time::sleep(std::time::Duration::from_secs(delay_seconds)).await;

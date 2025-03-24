@@ -28,3 +28,10 @@ CREATE TABLE IF NOT EXISTS pdao_vote
 
 CREATE INDEX IF NOT EXISTS pdao_vote_idx_referendum_id
     ON pdao_vote (referendum_id);
+
+ALTER TABLE pdao_referendum
+    ADD CONSTRAINT pdao_referendum_fk_vote
+        FOREIGN KEY (last_vote_id)
+        REFERENCES pdao_vote (id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE;
