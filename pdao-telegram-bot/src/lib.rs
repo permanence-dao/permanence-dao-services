@@ -211,7 +211,6 @@ async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
     let telegram_client = TelegramClient::new(&CONFIG);
     let referendum_importer = ReferendumImporter::new(&CONFIG).await?;
     let referenda = subsquare_client.fetch_referenda(chain, 1, 50).await?;
-    let polkadot_snapshot_height = get_polkadot_snapshot_height().await?;
     let mut imported_referendum_count = 0;
     for referendum in referenda.items.iter() {
         if ReferendumStatus::Deciding == referendum.state.status
@@ -240,8 +239,12 @@ async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
                     chain.display,
                     referendum.referendum_index
                 );
+                let snapshot_height = match chain.token_ticker.as_str() {
+                    "DOT" => referendum.state.block.number,
+                    _ => get_polkadot_snapshot_height().await?,
+                };
                 if let Err(error) = referendum_importer
-                    .import_referendum(chain, referendum.referendum_index, polkadot_snapshot_height)
+                    .import_referendum(chain, referendum.referendum_index, snapshot_height)
                     .await
                 {
                     let message = match error {

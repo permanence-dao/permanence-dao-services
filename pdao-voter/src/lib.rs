@@ -14,6 +14,9 @@ use polkadot::runtime_types::pallet_conviction_voting::vote::Vote;
 #[subxt::subxt(runtime_metadata_path = "../_metadata/polkadot-metadata.scale")]
 mod polkadot {}
 
+#[subxt::subxt(runtime_metadata_path = "../_metadata/kusama-metadata.scale")]
+mod kusama {}
+
 pub struct Voter {
     config: Config,
 }
