@@ -9,6 +9,7 @@ use pdao_opensquare_client::OpenSquareClient;
 use pdao_persistence::postgres::PostgreSQLStorage;
 use pdao_referendum_importer::{ReferendumImportError, ReferendumImporter};
 use pdao_subsquare_client::SubSquareClient;
+use pdao_substrate_client::SubstrateClient;
 use pdao_telegram_client::TelegramClient;
 use pdao_types::governance::ReferendumStatus;
 use pdao_types::substrate::chain::Chain;
@@ -78,7 +79,8 @@ impl TelegramBot {
                     .await?;
             }
             "/import" => {
-                self.process_import_command(chat_id, thread_id, args)
+                let polkadot_snapshot_height = get_polkadot_snapshot_height().await?;
+                self.process_import_command(chat_id, thread_id, args, polkadot_snapshot_height)
                     .await?;
             }
             "/removevote" => {
@@ -192,12 +194,24 @@ impl TelegramBot {
     }
 }
 
+async fn get_polkadot_snapshot_height() -> anyhow::Result<u64> {
+    let polkadot = Chain::polkadot();
+    let substrate_client = SubstrateClient::new(
+        &polkadot.rpc_url,
+        CONFIG.substrate.connection_timeout_seconds,
+        CONFIG.substrate.request_timeout_seconds,
+    )
+    .await?;
+    substrate_client.get_finalized_block_number().await
+}
+
 async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
     let postgres = PostgreSQLStorage::new(&CONFIG).await?;
     let subsquare_client = SubSquareClient::new(&CONFIG)?;
     let telegram_client = TelegramClient::new(&CONFIG);
     let referendum_importer = ReferendumImporter::new(&CONFIG).await?;
     let referenda = subsquare_client.fetch_referenda(chain, 1, 50).await?;
+    let polkadot_snapshot_height = get_polkadot_snapshot_height().await?;
     let mut imported_referendum_count = 0;
     for referendum in referenda.items.iter() {
         if ReferendumStatus::Deciding == referendum.state.status
@@ -227,7 +241,7 @@ async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
                     referendum.referendum_index
                 );
                 if let Err(error) = referendum_importer
-                    .import_referendum(chain, referendum.referendum_index)
+                    .import_referendum(chain, referendum.referendum_index, polkadot_snapshot_height)
                     .await
                 {
                     let message = match error {

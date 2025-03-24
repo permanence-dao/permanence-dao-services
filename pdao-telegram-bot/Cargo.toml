@@ -21,6 +21,7 @@ pdao-referendum-importer = { path = "../pdao-referendum-importer" }
 pdao-subsquare-client = { path = "../pdao-subsquare-client" }
 pdao-types = { path = "../pdao-types" }
 pdao-service = { path = "../pdao-service" }
+pdao-substrate-client = { path = "../pdao-substrate-client" }
 pdao-telegram-client = { path = "../pdao-telegram-client" }
 pdao-voter = { path = "../pdao-voter" }
 regex = "1.11.1"

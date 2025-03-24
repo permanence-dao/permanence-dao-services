@@ -45,6 +45,7 @@ impl ReferendumImporter {
         &self,
         chain: &Chain,
         index: u32,
+        polkadot_shapshot_height: u64,
     ) -> Result<Referendum, ReferendumImportError> {
         log::info!("Process {} referendum #{}.", chain.token_ticker, index,);
         let maybe_db_referendum = self
@@ -75,7 +76,7 @@ impl ReferendumImporter {
         };
         let new_opensquare_proposal_response = self
             .opensquare_client
-            .create_new_opensquare_proposal(chain, referendum.state.block.number, &referendum)
+            .create_new_opensquare_proposal(chain, polkadot_shapshot_height, &referendum)
             .await
             .map_err(|error| system_err(error, "OpenSquare error."))?;
         let new_telegram_topic_response = self

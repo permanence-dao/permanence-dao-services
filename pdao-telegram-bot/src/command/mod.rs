@@ -13,6 +13,7 @@ impl TelegramBot {
         chat_id: i64,
         thread_id: Option<i32>,
         args: &[String],
+        polkadot_snapshot_height: u64,
     ) -> anyhow::Result<()> {
         if args.is_empty() {
             self.telegram_client
@@ -60,7 +61,7 @@ impl TelegramBot {
         };
         if let Err(error) = self
             .referendum_importer
-            .import_referendum(&chain, index)
+            .import_referendum(&chain, index, polkadot_snapshot_height)
             .await
         {
             let message = match error {
