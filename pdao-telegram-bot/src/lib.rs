@@ -280,7 +280,11 @@ async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
                                 "🗳️ {} referendum {} imported:\n{}",
                                 chain.display,
                                 referendum.referendum_index,
-                                referendum.title.clone().unwrap_or("No title".to_string()),
+                                referendum
+                                    .title
+                                    .clone()
+                                    .unwrap_or("No title".to_string())
+                                    .replace("_", "\\_"),
                             ),
                         )
                         .await?;
