@@ -45,8 +45,10 @@ api_key = "openai_api_key"
 
 [voter]
 voting_admin_usernames = "usernames_separated_by_comma"
-real_account_address = "address"
-proxy_account_seed_phrase = "seed_phrase"
+polkadot_real_account_address = "address"
+polkadot_proxy_account_seed_phrase = "seed_phrase"
+kusama_real_account_address = "address"
+kusama_proxy_account_seed_phrase = "seed_phrase"
 sleep_seconds = 1800
 min_referendum_id = 1200
 member_count = 10

@@ -37,9 +37,9 @@ impl Voter {
             index: referendum_index,
         };
         let call = Call::ConvictionVoting(call);
-        let real = AccountId32::from_str(&self.config.voter.real_account_address)?;
+        let real = AccountId32::from_str(&self.config.voter.polkadot_real_account_address)?;
         let proxy = polkadot::tx().proxy().proxy(real.into(), None, call);
-        let uri = SecretUri::from_str(&self.config.voter.proxy_account_seed_phrase)
+        let uri = SecretUri::from_str(&self.config.voter.polkadot_proxy_account_seed_phrase)
             .expect("Invalid seed phrase.");
         let keypair = sr25519::Keypair::from_uri(&uri).expect("Invalid keypair.");
         let tx_progress = api
@@ -95,8 +95,8 @@ impl Voter {
         use polkadot::runtime_types::pallet_conviction_voting::pallet::Call as ConvictionVotingCall;
         use polkadot::runtime_types::pallet_conviction_voting::vote::Vote;
 
-        let real = AccountId32::from_str(&self.config.voter.real_account_address)?;
-        let uri = SecretUri::from_str(&self.config.voter.proxy_account_seed_phrase)
+        let real = AccountId32::from_str(&self.config.voter.polkadot_real_account_address)?;
+        let uri = SecretUri::from_str(&self.config.voter.polkadot_proxy_account_seed_phrase)
             .expect("Invalid seed phrase.");
         let keypair = sr25519::Keypair::from_uri(&uri).expect("Invalid keypair.");
 
@@ -153,8 +153,8 @@ impl Voter {
         use kusama::runtime_types::pallet_conviction_voting::pallet::Call as ConvictionVotingCall;
         use kusama::runtime_types::pallet_conviction_voting::vote::Vote;
 
-        let real = AccountId32::from_str(&self.config.voter.real_account_address)?;
-        let uri = SecretUri::from_str(&self.config.voter.proxy_account_seed_phrase)
+        let real = AccountId32::from_str(&self.config.voter.kusama_real_account_address)?;
+        let uri = SecretUri::from_str(&self.config.voter.kusama_proxy_account_seed_phrase)
             .expect("Invalid seed phrase.");
         let keypair = sr25519::Keypair::from_uri(&uri).expect("Invalid keypair.");
 
