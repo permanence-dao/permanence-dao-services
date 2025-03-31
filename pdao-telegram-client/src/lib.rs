@@ -86,7 +86,7 @@ impl TelegramClient {
             referendum.referendum_index,
             url,
             track.name(),
-            title,
+            title.replace("_", "\\_"),
             referendum.state.status,
         );
         let message = if let Some(content_summary) = &referendum.content_summary {
