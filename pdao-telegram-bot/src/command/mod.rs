@@ -578,7 +578,7 @@ impl TelegramBot {
         chat_id: i64,
         thread_id: Option<i32>,
         username: &str,
-        vote: bool,
+        vote: Option<bool>,
     ) -> anyhow::Result<()> {
         if !CONFIG.voter.voting_admin_usernames.contains(username) {
             self.telegram_client
@@ -670,7 +670,15 @@ impl TelegramBot {
             .await?;
         log::info!(
             "Force-{} for {} referendum {}.",
-            if vote { "aye" } else { "nay" },
+            if let Some(vote) = vote {
+                if vote {
+                    "aye"
+                } else {
+                    "nay"
+                }
+            } else {
+                "abstain"
+            },
             chain.chain,
             db_referendum.index
         );
@@ -679,7 +687,7 @@ impl TelegramBot {
         log::info!("Submit vote.");
         let (block_hash, block_number, extrinsic_index) = self
             .voter
-            .vote(&chain, db_referendum.index, Some(true), balance, conviction)
+            .vote(&chain, db_referendum.index, vote, balance, conviction)
             .await?;
         log::info!("Save vote in DB.");
         let vote_id = self
@@ -691,7 +699,7 @@ impl TelegramBot {
                 &block_hash,
                 block_number,
                 extrinsic_index,
-                Some(vote),
+                vote,
                 balance,
                 conviction,
                 None,
@@ -703,9 +711,17 @@ impl TelegramBot {
             .await?;
         let message = format!(
             "Voted {}.\nhttps://{}.subscan.io/extrinsic/{}-{}",
-            (if vote { "aye" } else { "nay" })
-                .to_string()
-                .to_uppercase(),
+            (if let Some(vote) = vote {
+                if vote {
+                    "aye"
+                } else {
+                    "nay"
+                }
+            } else {
+                "abstain"
+            })
+            .to_string()
+            .to_uppercase(),
             chain.chain.to_lowercase(),
             block_number,
             extrinsic_index,

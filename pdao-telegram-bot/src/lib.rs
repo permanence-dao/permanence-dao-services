@@ -70,12 +70,16 @@ impl TelegramBot {
                 self.process_archive_command(chat_id, thread_id, username)
                     .await?;
             }
+            "/forceabstain" => {
+                self.process_force_vote_command(chat_id, thread_id, username, None)
+                    .await?;
+            }
             "/forceaye" => {
-                self.process_force_vote_command(chat_id, thread_id, username, true)
+                self.process_force_vote_command(chat_id, thread_id, username, Some(true))
                     .await?;
             }
             "/forcenay" => {
-                self.process_force_vote_command(chat_id, thread_id, username, false)
+                self.process_force_vote_command(chat_id, thread_id, username, Some(false))
                     .await?;
             }
             "/import" => {
