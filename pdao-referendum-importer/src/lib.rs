@@ -47,6 +47,7 @@ impl ReferendumImporter {
         index: u32,
         snapshot_height: u64,
     ) -> Result<Referendum, ReferendumImportError> {
+        let snapshot_height = snapshot_height - 50;
         log::info!("Process {} referendum #{}.", chain.token_ticker, index,);
         let maybe_db_referendum = self
             .postgres

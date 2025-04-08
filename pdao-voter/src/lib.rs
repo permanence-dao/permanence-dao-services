@@ -90,9 +90,9 @@ impl Voter {
         balance: u128,
         conviction: u8,
     ) -> anyhow::Result<(String, u64, u32)> {
-        use polkadot::conviction_voting::calls::types::vote::Vote as VoteCall;
-        use polkadot::proxy::calls::types::proxy::Call;
-        use polkadot::runtime_types::pallet_conviction_voting::pallet::Call as ConvictionVotingCall;
+        use polkadot::conviction_voting::calls::types::vote::Vote as PolkadotVoteCall;
+        use polkadot::proxy::calls::types::proxy::Call as PolkadotProxyCall;
+        use polkadot::runtime_types::pallet_conviction_voting::pallet::Call as PolkadotVotingCall;
         use polkadot::runtime_types::pallet_conviction_voting::vote::Vote;
 
         let real = AccountId32::from_str(&self.config.voter.polkadot_real_account_address)?;
@@ -101,22 +101,22 @@ impl Voter {
         let keypair = sr25519::Keypair::from_uri(&uri).expect("Invalid keypair.");
 
         let vote = if let Some(aye) = vote {
-            VoteCall::Standard {
+            PolkadotVoteCall::Standard {
                 vote: Vote(conviction + if aye { 128 } else { 0 }),
                 balance,
             }
         } else {
-            VoteCall::SplitAbstain {
+            PolkadotVoteCall::SplitAbstain {
                 aye: 0,
                 nay: 0,
                 abstain: balance,
             }
         };
-        let call = ConvictionVotingCall::vote {
+        let call = PolkadotVotingCall::vote {
             poll_index: referendum_index,
             vote,
         };
-        let call = Call::ConvictionVoting(call);
+        let call = PolkadotProxyCall::ConvictionVoting(call);
         let proxy = polkadot::tx().proxy().proxy(real.into(), None, call);
 
         let api = OnlineClient::<PolkadotConfig>::from_url(&chain.rpc_url).await?;
