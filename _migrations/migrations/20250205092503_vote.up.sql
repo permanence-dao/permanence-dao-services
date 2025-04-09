@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS pdao_vote
     vote                    BOOLEAN,
     balance                 VARCHAR NOT NULL,
     conviction              INT NOT NULL,
-    is_removed              BOOLEAN DEFAULT FALSE,
+    is_removed              BOOLEAN NOT NULL DEFAULT FALSE,
     subsquare_comment_cid   VARCHAR,
     subsquare_comment_index INT,
     created_at              TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),

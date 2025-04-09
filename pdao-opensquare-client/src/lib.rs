@@ -1,6 +1,7 @@
 use chrono::Utc;
 use pdao_config::Config;
 use pdao_types::governance::opensquare::{
+    OpenSquareAppendantRequest, OpenSquareAppendantRequestData, OpenSquareAppendantResponse,
     OpenSquareNewProposal, OpenSquareNewProposalRequest, OpenSquareNewProposalResponse,
     OpenSquareReferendum, OpenSquareReferendumVote, OpenSquareReferendumVotesResponse,
     OpenSquareTerminateProposalRequest, OpenSquareTerminateProposalRequestData,
@@ -213,5 +214,68 @@ impl OpenSquareClient {
             response.result,
         );
         Ok(true)
+    }
+
+    pub async fn make_appendant_on_proposal(
+        &self,
+        chain: &Chain,
+        cid: &str,
+        content: &str,
+    ) -> anyhow::Result<OpenSquareAppendantResponse> {
+        log::info!("Make appendant to OpenSquare referendum with CID {cid}.");
+        let pair = sr25519::Pair::from_string(&self.config.substrate.gov_proxy_seed_phrase, None)
+            .expect("Invalid seed phrase");
+        let address = pair
+            .public()
+            .to_ss58check_with_version(Ss58AddressFormat::from(chain.ss58_prefix));
+        let request_data = OpenSquareAppendantRequestData {
+            proposal_cid: cid.to_string(),
+            content: content.to_string(),
+            content_type: "markdown".to_string(),
+            chain: chain.chain.clone(),
+            version: "2".to_string(),
+            timestamp: (Utc::now().timestamp_millis() / 1000) as u64,
+        };
+        let request_json = serde_json::to_string(&request_data)?;
+        let signature = pair.sign(request_json.as_bytes());
+        let signature_hex = format!("0x{}", hex::encode(signature));
+        let request = OpenSquareAppendantRequest {
+            data: request_data,
+            address: address.clone(),
+            signature: signature_hex,
+        };
+        let response_result = self
+            .http_client
+            .post(format!(
+                "https://voting.opensquare.io/api/{}/appendants",
+                self.config.referendum_importer.opensquare_space,
+            ))
+            .json(&request)
+            .send()
+            .await;
+        let response = match response_result {
+            Ok(response) => response,
+            Err(error) => {
+                log::error!(
+                    "Error while posting appendant to OpenSquare proposal: {}",
+                    error
+                );
+                return Err(error.into());
+            }
+        };
+        let status_code = response.status();
+        let response_text = response.text().await?;
+        if !status_code.is_success() {
+            let error_message =
+                format!("Error response from OpenSquare for appendant request: {response_text}");
+            log::error!("{error_message}");
+            return Err(anyhow::Error::msg(error_message));
+        }
+        let response: OpenSquareAppendantResponse = serde_json::from_str(&response_text)?;
+        log::info!(
+            "Made an appendant on OpenSquare proposal. Appendant CID: {}",
+            response.cid,
+        );
+        Ok(response)
     }
 }

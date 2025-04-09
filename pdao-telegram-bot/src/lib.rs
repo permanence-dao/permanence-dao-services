@@ -114,6 +114,14 @@ impl TelegramBot {
                 self.process_notify_command(chat_id, thread_id, username)
                     .await?;
             }
+            "/reportcoi" => {
+                self.process_coi_command(chat_id, thread_id, true, username)
+                    .await?;
+            }
+            "/removecoi" => {
+                self.process_coi_command(chat_id, thread_id, false, username)
+                    .await?;
+            }
             _ => {
                 // err - send message
             }

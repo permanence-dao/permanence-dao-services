@@ -81,4 +81,23 @@ pub struct Referendum {
     pub opensquare_post_uid: Option<String>,
     pub last_vote_id: Option<u32>,
     pub is_terminated: bool,
+    pub has_coi: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Vote {
+    pub id: u32,
+    pub network_id: u32,
+    pub referendum_id: u32,
+    pub index: u32,
+    pub block_hash: String,
+    pub block_number: u64,
+    pub extrinsic_index: u32,
+    pub vote: Option<bool>,
+    pub balance: u128,
+    pub conviction: u32,
+    pub is_removed: bool,
+    pub subsquare_comment_cid: Option<String>,
+    pub subsquare_comment_index: Option<u32>,
 }

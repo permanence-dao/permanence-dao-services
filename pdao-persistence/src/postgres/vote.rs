@@ -1,4 +1,39 @@
 use crate::postgres::PostgreSQLStorage;
+use pdao_types::governance::Vote;
+
+type VoteRecord = (
+    i32,
+    i32,
+    i32,
+    i32,
+    String,
+    i64,
+    i32,
+    Option<bool>,
+    String,
+    i32,
+    bool,
+    Option<String>,
+    Option<i32>,
+);
+
+fn vote_record_into_vote(record: &VoteRecord) -> anyhow::Result<Vote> {
+    Ok(Vote {
+        id: record.0 as u32,
+        network_id: record.1 as u32,
+        referendum_id: record.2 as u32,
+        index: record.3 as u32,
+        block_hash: record.4.clone(),
+        block_number: record.5 as u64,
+        extrinsic_index: record.6 as u32,
+        vote: record.7,
+        balance: record.8.parse()?,
+        conviction: record.9 as u32,
+        is_removed: record.10,
+        subsquare_comment_cid: record.11.clone(),
+        subsquare_comment_index: record.12.map(|i| i as u32),
+    })
+}
 
 impl PostgreSQLStorage {
     #[allow(clippy::too_many_arguments)]
@@ -51,6 +86,25 @@ impl PostgreSQLStorage {
         .fetch_optional(&self.connection_pool)
         .await?;
         Ok(maybe_result.map(|r| r.0))
+    }
+
+    pub async fn get_referendum_votes(&self, referendum_id: u32) -> anyhow::Result<Vec<Vote>> {
+        let db_votes: Vec<VoteRecord> = sqlx::query_as(
+            r#"
+            SELECT id, network_id, referendum_id, index, block_hash, block_number, extrinsic_index, vote, balance, conviction, is_removed, subsquare_comment_cid, subsquare_comment_index
+            FROM pdao_vote
+            WHERE referendum_id = $1
+            ORDER BY id ASC
+            "#,
+        )
+            .bind(referendum_id as i32)
+            .fetch_all(&self.connection_pool)
+            .await?;
+        let mut votes = Vec::new();
+        for db_vote in db_votes.iter() {
+            votes.push(vote_record_into_vote(db_vote)?);
+        }
+        Ok(votes)
     }
 
     pub async fn get_referendum_vote_count(&self, referendum_id: u32) -> anyhow::Result<u32> {

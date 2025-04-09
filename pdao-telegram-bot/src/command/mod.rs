@@ -404,12 +404,18 @@ impl TelegramBot {
                 "OpenSquare referendum terminated.",
             )
             .await?;
+        let vote_count = self
+            .postgres
+            .get_referendum_vote_count(db_referendum.id)
+            .await?;
         self.telegram_client
             .update_referendum_topic_name(
                 chat_id,
                 thread_id,
                 &opensquare_referendum.title,
+                db_referendum.has_coi,
                 Some(topic_status),
+                &format!("V{vote_count}"),
                 topic_emoji,
             )
             .await?;
@@ -553,11 +559,14 @@ impl TelegramBot {
             .await?;
         self.postgres.remove_vote(last_vote_id).await?;
         let message = format!(
-            "👍 Removed on-chain vote.\nhttps://{}.subscan.io/extrinsic/{}-{}",
+            "Removed on-chain vote.\nhttps://{}.subscan.io/extrinsic/{}-{}",
             chain.chain.to_lowercase(),
             remove_vote_result.0,
             remove_vote_result.1
         );
+        self.opensquare_client
+            .make_appendant_on_proposal(&chain, &opensquare_referendum.id, &message)
+            .await?;
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)
             .await?;
@@ -566,7 +575,9 @@ impl TelegramBot {
                 chat_id,
                 thread_id,
                 &opensquare_referendum.title,
+                db_referendum.has_coi,
                 None,
+                "VR",
                 "🗳",
             )
             .await?;
@@ -629,6 +640,31 @@ impl TelegramBot {
             return Ok(());
         };
         let chain = Chain::from_id(db_referendum.network_id);
+        let cid = if let Some(cid) = &db_referendum.opensquare_cid {
+            cid
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "OpenSquare CID not found in the referendum record. Contact admin.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let opensquare_referendum =
+            if let Some(referendum) = self.opensquare_client.fetch_referendum(cid).await? {
+                referendum
+            } else {
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        "Referendum not found on OpenSquare. Contact admin.",
+                    )
+                    .await?;
+                return Ok(());
+            };
         let subsquare_referendum = if let Some(referendum) = self
             .subsquare_client
             .fetch_referendum(&chain, db_referendum.index)
@@ -710,7 +746,7 @@ impl TelegramBot {
             .set_referendum_last_vote_id(db_referendum.id, Some(vote_id as u32))
             .await?;
         let message = format!(
-            "Voted {}.\nhttps://{}.subscan.io/extrinsic/{}-{}",
+            "Force-voted {}.\nhttps://{}.subscan.io/extrinsic/{}-{}",
             (if let Some(vote) = vote {
                 if vote {
                     "aye"
@@ -726,6 +762,9 @@ impl TelegramBot {
             block_number,
             extrinsic_index,
         );
+        self.opensquare_client
+            .make_appendant_on_proposal(&chain, &opensquare_referendum.id, &message)
+            .await?;
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)
             .await?;
@@ -832,6 +871,19 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         }
+        let opensquare_referendum =
+            if let Some(referendum) = self.opensquare_client.fetch_referendum(cid).await? {
+                referendum
+            } else {
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        "Referendum not found on OpenSquare. Contact admin.",
+                    )
+                    .await?;
+                return Ok(());
+            };
         let opensquare_votes = if let Some(opensquare_votes) =
             self.opensquare_client.fetch_referendum_votes(cid).await?
         {
@@ -883,29 +935,33 @@ impl TelegramBot {
         } else {
             (aye_count * 100) / (aye_count + nay_count)
         };
+        let past_votes = self.postgres.get_referendum_votes(db_referendum.id).await?;
         let vote: Option<bool>;
         let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         if participation_percent < voting_policy.participation_percent as u32 {
             vote = None;
             message = format!(
-                "{message}\n{}% participation not met.\nVoted ABSTAIN.",
+                "{message}\n{}% participation not met.\n**Vote #{}: ABSTAIN**",
                 voting_policy.participation_percent,
+                past_votes.len() + 1,
             );
         } else if quorum_percent < voting_policy.quorum_percent as u32 {
             vote = Some(false);
             message = format!(
-                "{message}\n{}% quorum not met.\nVoted NAY.",
+                "{message}\n{}% quorum not met.\n**Vote #{}: NAY**",
                 voting_policy.quorum_percent,
+                past_votes.len() + 1,
             );
         } else if aye_percent <= voting_policy.majority_percent as u32 {
             vote = Some(false);
             message = format!(
-                "{message}\n{}% majority not met.\nVoted NAY.",
+                "{message}\n{}% majority not met.\n**Voted #{}: NAY**",
                 voting_policy.majority_percent,
+                past_votes.len() + 1,
             );
         } else {
             vote = Some(true);
-            message = format!("{message}\nVoted AYE.")
+            message = format!("{message}\n**Vote #{}: AYE**", past_votes.len() + 1,)
         };
         self.telegram_client
             .send_message(
@@ -914,13 +970,9 @@ impl TelegramBot {
                 "⚙️ Preparing the on-chain submission. Please give me some time.",
             )
             .await?;
-        let previous_vote_count = self
-            .postgres
-            .get_referendum_vote_count(db_referendum.id)
-            .await?;
         log::info!(
             "Vote #{} for {} referendum {}.",
-            previous_vote_count + 1,
+            past_votes.len() + 1,
             chain.chain,
             db_referendum.index
         );
@@ -931,32 +983,56 @@ impl TelegramBot {
             .voter
             .vote(&chain, db_referendum.index, vote, balance, conviction)
             .await?;
-        let subsquare_cid = if post_feedback {
+        let (subsquare_cid, subsquare_index) = if post_feedback {
             log::info!("Get OpenAI feedback summary.");
             let feedback = self
                 .openai_client
                 .fetch_feedback_summary(&opensquare_votes)
                 .await?;
             log::info!("Post SubSquare comment.");
-            let response = self
-                .subsquare_client
-                .post_comment(
-                    &chain,
-                    &subsquare_referendum,
-                    cid,
-                    &db_referendum.track,
-                    &voting_policy,
-                    previous_vote_count,
-                    (aye_count, nay_count, abstain_count),
-                    CONFIG.voter.member_count,
-                    vote,
-                    &feedback,
-                )
-                .await?;
-            Some(response.cid)
+            let (cid, index) = if let Some(Some(first_vote_cid)) = past_votes
+                .first()
+                .map(|first_vote| first_vote.subsquare_comment_cid.clone())
+            {
+                let response = self
+                    .subsquare_client
+                    .post_comment_reply(
+                        &chain,
+                        &subsquare_referendum,
+                        cid,
+                        &first_vote_cid,
+                        &db_referendum.track,
+                        &voting_policy,
+                        past_votes.len() as u32 + 1,
+                        (aye_count, nay_count, abstain_count),
+                        CONFIG.voter.member_count,
+                        vote,
+                        &feedback,
+                    )
+                    .await?;
+                (response.cid, response.index)
+            } else {
+                let response = self
+                    .subsquare_client
+                    .post_comment(
+                        &chain,
+                        &subsquare_referendum,
+                        cid,
+                        &db_referendum.track,
+                        &voting_policy,
+                        past_votes.len() as u32 + 1,
+                        (aye_count, nay_count, abstain_count),
+                        CONFIG.voter.member_count,
+                        vote,
+                        &feedback,
+                    )
+                    .await?;
+                (response.cid, response.index)
+            };
+            (Some(cid), Some(index))
         } else {
             log::info!("Skip SubSquare comment.");
-            None
+            (None, None)
         };
         log::info!("Save vote in DB.");
         let vote_id = self
@@ -972,7 +1048,7 @@ impl TelegramBot {
                 balance,
                 conviction,
                 subsquare_cid.as_deref(),
-                None,
+                subsquare_index,
             )
             .await?;
         self.postgres
@@ -984,17 +1060,32 @@ impl TelegramBot {
             block_number,
             extrinsic_index,
         );
-        if post_feedback {
+        if let Some(subsquare_index) = subsquare_index {
             message = format!(
-                "{message}\nFeedback @ https://{}.subsquare.io/referenda/{}",
+                "{message}\nhttps://{}.subsquare.io/referenda/{}#{subsquare_index}",
                 chain.chain.to_lowercase(),
                 db_referendum.index,
             );
         } else {
             message = format!("{message}\nFeedback skipped.",);
         }
+
+        self.telegram_client
+            .update_referendum_topic_name(
+                chat_id,
+                thread_id,
+                &opensquare_referendum.title,
+                db_referendum.has_coi,
+                None,
+                &format!("V{}", past_votes.len() + 1),
+                "🗳",
+            )
+            .await?;
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)
+            .await?;
+        self.opensquare_client
+            .make_appendant_on_proposal(&chain, cid, &message)
             .await?;
         Ok(())
     }
@@ -1203,6 +1294,140 @@ impl TelegramBot {
             .delete_referendum_topic(CONFIG.telegram.chat_id, thread_id)
             .await?;
         log::info!("Deleted Telegram topic.");
+        Ok(())
+    }
+
+    pub(crate) async fn process_coi_command(
+        &self,
+        chat_id: i64,
+        thread_id: Option<i32>,
+        has_coi: bool,
+        username: &str,
+    ) -> anyhow::Result<()> {
+        if !CONFIG.voter.voting_admin_usernames.contains(username) {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    thread_id,
+                    "This command can only be called by a voting admin.",
+                )
+                .await?;
+            return Ok(());
+        }
+        let thread_id = if let Some(thread_id) = thread_id {
+            thread_id
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    thread_id,
+                    "This command can only be called from a referendum topic.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let db_referendum = if let Some(referendum) = self
+            .postgres
+            .get_referendum_by_telegram_chat_and_thread_id(chat_id, thread_id)
+            .await?
+        {
+            if referendum.is_terminated {
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        "Referendum has been terminated. Cannot remove vote.",
+                    )
+                    .await?;
+                return Ok(());
+            }
+            referendum
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "Referendum not found in the storage. Contact admin.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let chain = Chain::from_id(db_referendum.network_id);
+        let subsquare_referendum = if let Some(referendum) = self
+            .subsquare_client
+            .fetch_referendum(&chain, db_referendum.index)
+            .await?
+        {
+            referendum
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "Referendum not found on SubSquare. Contact admin.",
+                )
+                .await?;
+            return Ok(());
+        };
+        if !(subsquare_referendum.state.status == ReferendumStatus::Deciding
+            || subsquare_referendum.state.status == ReferendumStatus::Preparing
+            || subsquare_referendum.state.status == ReferendumStatus::Confirming)
+        {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    &format!(
+                        "Cannot report or remove CoI. Referendum status: {}",
+                        subsquare_referendum.state.status
+                    ),
+                )
+                .await?;
+            return Ok(());
+        }
+        let cid = if let Some(cid) = &db_referendum.opensquare_cid {
+            cid
+        } else {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "OpenSquare CID not found in the referendum record. Contact admin.",
+                )
+                .await?;
+            return Ok(());
+        };
+        let opensquare_referendum =
+            if let Some(referendum) = self.opensquare_client.fetch_referendum(cid).await? {
+                referendum
+            } else {
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        "Referendum not found on OpenSquare. Contact admin.",
+                    )
+                    .await?;
+                return Ok(());
+            };
+        let vote_count = self
+            .postgres
+            .get_referendum_vote_count(db_referendum.id)
+            .await?;
+        self.postgres
+            .set_referendum_has_coi(db_referendum.id, has_coi)
+            .await?;
+        self.telegram_client
+            .update_referendum_topic_name(
+                chat_id,
+                thread_id,
+                &opensquare_referendum.title,
+                has_coi,
+                None,
+                &format!("V{vote_count}"),
+                "🗳",
+            )
+            .await?;
         Ok(())
     }
 }

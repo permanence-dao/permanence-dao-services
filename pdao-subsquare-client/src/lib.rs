@@ -4,13 +4,100 @@ use num_ordinal::{Ordinal, O32};
 use pdao_config::Config;
 use pdao_types::governance::policy::VotingPolicy;
 use pdao_types::governance::subsquare::{
-    SubSquareCommentData, SubSquareCommentIndexerData, SubSquareCommentRequest,
-    SubSquareCommentResponse, SubSquareReferendum, SubSquareReferendumList,
+    SubSquareCommentData, SubSquareCommentIndexerData, SubSquareCommentReplyData,
+    SubSquareCommentReplyRequest, SubSquareCommentRequest, SubSquareCommentResponse,
+    SubSquareReferendum, SubSquareReferendumList,
 };
 use pdao_types::governance::track::Track;
 use pdao_types::substrate::chain::Chain;
 use sp_core::crypto::{Ss58AddressFormat, Ss58Codec};
 use sp_core::{sr25519, Pair};
+
+#[allow(clippy::too_many_arguments)]
+fn get_vote_content(
+    cid: &str,
+    track: &Track,
+    policy: &VotingPolicy,
+    previous_vote_count: u32,
+    vote_distribution: (u32, u32, u32),
+    member_count: u32,
+    vote: Option<bool>,
+    feedback_summary: &str,
+) -> String {
+    let policy_summary = match track {
+        Track::Root
+        | Track::WhitelistedCaller
+        | Track::WishForChange
+        | Track::Treasurer
+        | Track::FellowshipAdmin
+        | Track::BigSpender
+        | Track::StakingAdmin
+        | Track::LeaseAdmin
+        | Track::GeneralAdmin
+        | Track::AuctionAdmin
+        | Track::ReferendumCanceller
+        | Track::ReferendumKiller => format!("{}% quorum", policy.quorum_percent),
+        Track::SmallTipper | Track::BigTipper | Track::SmallSpender => format!(
+            "{}% participation and simple majority of non-abstain voters",
+            policy.participation_percent
+        ),
+        Track::MediumSpender => {
+            format!(
+                "{}% quorum and simple majority of non-abstain voters",
+                policy.quorum_percent
+            )
+        }
+    };
+    let abstain_summary = if vote_distribution.2 > 0 {
+        format!(
+            ", with **{} member{} abstaining**",
+            Num2Words::new(vote_distribution.2)
+                .lang(Lang::English)
+                .to_words()
+                .unwrap(),
+            if vote_distribution.2 > 1 { "s" } else { "" }
+        )
+    } else {
+        "".to_string()
+    };
+    let content = format!(
+        r#"Dear Proposer,
+
+Thank you for your proposal. Our **{}** vote on this proposal is **{}**.
+
+The **{}** track requires **{policy_summary}** according to our voting policy. This proposal has received **{} aye and {} nay** votes from **{} members**{abstain_summary}. Below is a summary of our members' comments:
+
+> {feedback_summary}
+
+The full discussion can be found in our [internal voting](https://voting.opensquare.io/space/permanence/proposal/{cid}).
+
+Kind regards,<br>Permanence DAO"#,
+        O32::from1(previous_vote_count + 1),
+        if let Some(vote) = vote {
+            if vote {
+                "AYE"
+            } else {
+                "NAY"
+            }
+        } else {
+            "ABSTAIN"
+        },
+        track.name(),
+        Num2Words::new(vote_distribution.0)
+            .lang(Lang::English)
+            .to_words()
+            .unwrap(),
+        Num2Words::new(vote_distribution.1)
+            .lang(Lang::English)
+            .to_words()
+            .unwrap(),
+        Num2Words::new(member_count)
+            .lang(Lang::English)
+            .to_words()
+            .unwrap(),
+    );
+    content
+}
 
 pub struct SubSquareClient {
     config: Config,
@@ -65,6 +152,20 @@ impl SubSquareClient {
             .await?)
     }
 
+    fn get_address(&self, chain: &Chain) -> String {
+        let pair = sr25519::Pair::from_string(&self.config.substrate.gov_proxy_seed_phrase, None)
+            .expect("Invalid seed phrase");
+        pair.public()
+            .to_ss58check_with_version(Ss58AddressFormat::from(chain.ss58_prefix))
+    }
+
+    fn sign(&self, data: &[u8]) -> String {
+        let pair = sr25519::Pair::from_string(&self.config.substrate.gov_proxy_seed_phrase, None)
+            .expect("Invalid seed phrase");
+        let signature = pair.sign(data);
+        format!("0x{}", hex::encode(signature))
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn post_comment(
         &self,
@@ -83,83 +184,16 @@ impl SubSquareClient {
             "https://{}.subsquare.io/api/sima/referenda/{}/comments",
             chain.chain, referendum.referendum_index,
         );
-        let policy_summary = match track {
-            Track::Root
-            | Track::WhitelistedCaller
-            | Track::WishForChange
-            | Track::Treasurer
-            | Track::FellowshipAdmin
-            | Track::BigSpender
-            | Track::StakingAdmin
-            | Track::LeaseAdmin
-            | Track::GeneralAdmin
-            | Track::AuctionAdmin
-            | Track::ReferendumCanceller
-            | Track::ReferendumKiller => format!("{}% quorum", policy.quorum_percent),
-            Track::SmallTipper | Track::BigTipper | Track::SmallSpender => format!(
-                "{}% participation and simple majority of non-abstain voters",
-                policy.participation_percent
-            ),
-            Track::MediumSpender => {
-                format!(
-                    "{}% quorum and simple majority of non-abstain voters",
-                    policy.quorum_percent
-                )
-            }
-        };
-        let abstain_summary = if vote_distribution.2 > 0 {
-            format!(
-                ", with **{} member{} abstaining**",
-                Num2Words::new(vote_distribution.2)
-                    .lang(Lang::English)
-                    .to_words()
-                    .unwrap(),
-                if vote_distribution.2 > 1 { "s" } else { "" }
-            )
-        } else {
-            "".to_string()
-        };
-        let content = format!(
-            r#"Dear Proposer,
-
-Thank you for your proposal. Our **{}** vote on this proposal is **{}**.
-
-The **{}** track requires **{policy_summary}** according to our voting policy. This proposal has received **{} aye and {} nay** votes from **{} members**{abstain_summary}. Below is a summary of our members' comments:
-
-> {feedback_summary}
-
-The full discussion can be found in our [internal voting](https://voting.opensquare.io/space/permanence/proposal/{cid}).
-
-Kind regards,<br>Permanence DAO"#,
-            O32::from1(previous_vote_count + 1),
-            if let Some(vote) = vote {
-                if vote {
-                    "AYE"
-                } else {
-                    "NAY"
-                }
-            } else {
-                "ABSTAIN"
-            },
-            track.name(),
-            Num2Words::new(vote_distribution.0)
-                .lang(Lang::English)
-                .to_words()
-                .unwrap(),
-            Num2Words::new(vote_distribution.1)
-                .lang(Lang::English)
-                .to_words()
-                .unwrap(),
-            Num2Words::new(member_count)
-                .lang(Lang::English)
-                .to_words()
-                .unwrap(),
+        let content = get_vote_content(
+            cid,
+            track,
+            policy,
+            previous_vote_count,
+            vote_distribution,
+            member_count,
+            vote,
+            feedback_summary,
         );
-        let pair = sr25519::Pair::from_string(&self.config.substrate.gov_proxy_seed_phrase, None)
-            .expect("Invalid seed phrase");
-        let address = pair
-            .public()
-            .to_ss58check_with_version(Ss58AddressFormat::from(chain.ss58_prefix));
         let request_data = SubSquareCommentData {
             action: "comment".to_string(),
             indexer: SubSquareCommentIndexerData {
@@ -173,11 +207,10 @@ Kind regards,<br>Permanence DAO"#,
             timestamp: Utc::now().timestamp_millis() as u64,
         };
         let request_data_json = serde_json::to_string(&request_data)?;
-        let signature = pair.sign(request_data_json.as_bytes());
-        let signature_hex = format!("0x{}", hex::encode(signature));
+        let signature_hex = self.sign(&request_data_json.into_bytes());
         let request = SubSquareCommentRequest {
             entity: request_data,
-            address,
+            address: self.get_address(chain),
             signature: signature_hex,
             signer_wallet: "polkadot-js".to_string(),
         };
@@ -185,20 +218,99 @@ Kind regards,<br>Permanence DAO"#,
         let response = match response_result {
             Ok(response) => response,
             Err(error) => {
-                log::error!("Error while posting SubSquare comment: {}", error);
+                log::error!(
+                    "Error while posting SubSquare comment vote #{}: {}",
+                    previous_vote_count + 1,
+                    error
+                );
                 return Err(error.into());
             }
         };
         let status_code = response.status();
         let response_text = response.text().await?;
         if !status_code.is_success() {
-            let error_message =
-                format!("Error while posting SubSquare proposal: {}", response_text);
+            let error_message = format!(
+                "Error while posting SubSquare comment for vote #{}: {}",
+                previous_vote_count + 1,
+                response_text
+            );
             log::error!("{error_message}");
             return Err(anyhow::Error::msg(error_message));
         }
         log::info!(
-            "Posted SubSquare comment for {} referendum ${}. Response: {response_text}",
+            "Posted SubSquare comment for {} referendum #{} vote #{}. Response: {response_text}",
+            chain.token_ticker,
+            referendum.referendum_index,
+            previous_vote_count + 1,
+        );
+
+        Ok(serde_json::from_str(&response_text)?)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn post_comment_reply(
+        &self,
+        chain: &Chain,
+        referendum: &SubSquareReferendum,
+        cid: &str,
+        comment_cid: &str,
+        track: &Track,
+        policy: &VotingPolicy,
+        previous_vote_count: u32,
+        vote_distribution: (u32, u32, u32),
+        member_count: u32,
+        vote: Option<bool>,
+        feedback_summary: &str,
+    ) -> anyhow::Result<SubSquareCommentResponse> {
+        let url = format!(
+            "https://{}.subsquare.io/api/sima/referenda/{}/comments/{comment_cid}",
+            chain.chain, referendum.referendum_index,
+        );
+        let content = get_vote_content(
+            cid,
+            track,
+            policy,
+            previous_vote_count,
+            vote_distribution,
+            member_count,
+            vote,
+            feedback_summary,
+        );
+        let request_data = SubSquareCommentReplyData {
+            action: "comment".to_string(),
+            comment_cid: comment_cid.to_string(),
+            content,
+            content_format: "subsquare_md".to_string(),
+            timestamp: Utc::now().timestamp_millis() as u64,
+        };
+        let request_data_json = serde_json::to_string(&request_data)?;
+        let signature_hex = self.sign(&request_data_json.into_bytes());
+        let request = SubSquareCommentReplyRequest {
+            entity: request_data,
+            address: self.get_address(chain),
+            signature: signature_hex,
+            signer_wallet: "polkadot-js".to_string(),
+        };
+        let response_result = self.http_client.post(url).json(&request).send().await;
+        let response = match response_result {
+            Ok(response) => response,
+            Err(error) => {
+                log::error!("Error while posting SubSquare comment reply: {}", error);
+                return Err(error.into());
+            }
+        };
+        let status_code = response.status();
+        let response_text = response.text().await?;
+        if !status_code.is_success() {
+            let error_message = format!(
+                "Error while posting SubSquare comment reply: {}",
+                response_text
+            );
+            log::error!("{error_message}");
+            return Err(anyhow::Error::msg(error_message));
+        }
+        log::info!(
+            "Posted SubSquare comment reply for {} referendum ${}. Response: {response_text}",
             chain.token_ticker,
             referendum.referendum_index,
         );

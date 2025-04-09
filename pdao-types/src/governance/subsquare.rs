@@ -195,4 +195,32 @@ pub struct SubSquareCommentRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareCommentResponse {
     pub cid: String,
+    pub index: u32,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct SubSquareCommentReplyData {
+    pub action: String,
+    #[serde(rename = "cid")]
+    pub comment_cid: String,
+    pub content: String,
+    #[serde(rename = "content_format")]
+    pub content_format: String,
+    pub timestamp: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubSquareCommentReplyRequest {
+    pub entity: SubSquareCommentReplyData,
+    pub address: String,
+    pub signature: String,
+    pub signer_wallet: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubSquareCommentReplyResponse {
+    pub cid: String,
+    pub index: u32,
 }

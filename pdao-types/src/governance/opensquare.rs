@@ -211,3 +211,29 @@ pub struct OpenSquareTerminateProposalRequest {
 pub struct OpenSquareTerminateProposalResponse {
     pub result: bool,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSquareAppendantRequestData {
+    pub proposal_cid: String,
+    pub content: String,
+    pub content_type: String,
+    #[serde(rename = "appenderNetwork")]
+    pub chain: String,
+    pub version: String,
+    pub timestamp: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSquareAppendantRequest {
+    pub data: OpenSquareAppendantRequestData,
+    pub address: String,
+    pub signature: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSquareAppendantResponse {
+    pub cid: String,
+}

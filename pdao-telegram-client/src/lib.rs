@@ -162,7 +162,9 @@ impl TelegramClient {
         chat_id: i64,
         thread_id: i32,
         name: &str,
+        has_coi: bool,
         maybe_status_text: Option<&str>,
+        vote_count_status: &str,
         status_emoji: &str,
     ) -> anyhow::Result<bool> {
         let stickers = self.telegram_api.get_forum_topic_icon_stickers().await?;
@@ -173,14 +175,15 @@ impl TelegramClient {
             }
         }
 
+        let coi_status = if has_coi { "[CoI] " } else { "" };
         let params = EditForumTopicParams::builder()
             .chat_id(ChatId::Integer(chat_id))
             .message_thread_id(thread_id)
             .maybe_icon_custom_emoji_id(checkmark_emoji_id)
             .name(if let Some(status_text) = maybe_status_text {
-                format!("[{status_text}] {name}")
+                format!("[{status_text}] {coi_status}[{vote_count_status}] {name}")
             } else {
-                name.to_string()
+                format!("{coi_status}[{vote_count_status}] {name}")
             })
             .build();
         let result = self.telegram_api.edit_forum_topic(&params).await?;
