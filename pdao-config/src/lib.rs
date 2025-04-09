@@ -75,8 +75,10 @@ pub struct OpenAPIConfig {
 pub struct VoterConfig {
     pub voting_admin_usernames: String,
     pub polkadot_real_account_address: String,
+    pub polkadot_dv_delegation_account_address: String,
     pub polkadot_proxy_account_seed_phrase: String,
     pub kusama_real_account_address: String,
+    pub kusama_dv_delegation_account_address: String,
     pub kusama_proxy_account_seed_phrase: String,
     pub sleep_seconds: u64,
     pub min_referendum_id: u32,

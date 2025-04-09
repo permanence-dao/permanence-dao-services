@@ -723,7 +723,14 @@ impl TelegramBot {
         log::info!("Submit vote.");
         let (block_hash, block_number, extrinsic_index) = self
             .voter
-            .vote(&chain, db_referendum.index, vote, balance, conviction)
+            .vote(
+                &chain,
+                db_referendum.index,
+                db_referendum.has_coi,
+                vote,
+                balance,
+                conviction,
+            )
             .await?;
         log::info!("Save vote in DB.");
         let vote_id = self
@@ -981,7 +988,14 @@ impl TelegramBot {
         log::info!("Submit vote.");
         let (block_hash, block_number, extrinsic_index) = self
             .voter
-            .vote(&chain, db_referendum.index, vote, balance, conviction)
+            .vote(
+                &chain,
+                db_referendum.index,
+                db_referendum.has_coi,
+                vote,
+                balance,
+                conviction,
+            )
             .await?;
         let (subsquare_cid, subsquare_index) = if post_feedback {
             log::info!("Get OpenAI feedback summary.");
