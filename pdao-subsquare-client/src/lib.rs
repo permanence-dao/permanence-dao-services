@@ -263,7 +263,7 @@ impl SubSquareClient {
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {
         let url = format!(
-            "https://{}.subsquare.io/api/sima/referenda/{}/comments/{comment_cid}",
+            "https://{}.subsquare.io/api/sima/referenda/{}/comments/{comment_cid}/replies",
             chain.chain, referendum.referendum_index,
         );
         let content = get_vote_content(
