@@ -157,6 +157,7 @@ impl TelegramClient {
         Ok(response)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_referendum_topic_name(
         &self,
         chat_id: i64,

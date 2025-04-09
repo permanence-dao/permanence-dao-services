@@ -1352,6 +1352,25 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
+        if has_coi && db_referendum.has_coi {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "Referendum has already been marked for conflict of interest.",
+                )
+                .await?;
+            return Ok(());
+        } else if !has_coi && !db_referendum.has_coi {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "Referendum has not marked for conlict of interest.",
+                )
+                .await?;
+            return Ok(());
+        }
         let chain = Chain::from_id(db_referendum.network_id);
         let subsquare_referendum = if let Some(referendum) = self
             .subsquare_client
@@ -1427,6 +1446,14 @@ impl TelegramBot {
                 &format!("V{vote_count}"),
                 "🗳",
             )
+            .await?;
+        let message = if has_coi {
+            "Referendum has been marked for conlict of interest.\nDV delegation account will vote abstain on this referendum."
+        } else {
+            "Conlict of interest has been removed from the referendum.\nDV delegation account will vote normally on this referendum."
+        };
+        self.telegram_client
+            .send_message(chat_id, Some(thread_id), message)
             .await?;
         Ok(())
     }
