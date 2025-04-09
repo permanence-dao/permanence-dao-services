@@ -1069,9 +1069,9 @@ impl TelegramBot {
             .set_referendum_last_vote_id(db_referendum.id, Some(vote_id as u32))
             .await?;
         let coi_message = if db_referendum.has_coi {
-            "No CoI reported. DV delegation exercised."
-        } else {
             "CoI reported. DV delegation voted abstain."
+        } else {
+            "No CoI reported. DV delegation exercised."
         };
         message = format!(
             "{message}\n{coi_message}\nhttps://{}.subscan.io/extrinsic/{}-{}",
