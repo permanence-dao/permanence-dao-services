@@ -66,7 +66,7 @@ impl TelegramClient {
             .create_forum_topic(&CreateForumTopicParams {
                 chat_id: ChatId::Integer(config.telegram.chat_id),
                 name: format!(
-                    "[{}] {} #{} - {}",
+                    "[V0] [{}] {} #{} - {}",
                     track.short_name(),
                     chain.token_ticker,
                     referendum.referendum_index,
