@@ -15,6 +15,7 @@ use sp_core::{sr25519, Pair};
 
 #[allow(clippy::too_many_arguments)]
 fn get_vote_content(
+    chain: &Chain,
     cid: &str,
     track: &Track,
     policy: &VotingPolicy,
@@ -23,6 +24,7 @@ fn get_vote_content(
     member_count: u32,
     vote: Option<bool>,
     feedback_summary: &str,
+    delegation_address: &str,
 ) -> String {
     let policy_summary = match track {
         Track::Root
@@ -71,7 +73,7 @@ The **{}** track requires **{policy_summary}** according to our voting policy. T
 
 The full discussion can be found in our [internal voting](https://voting.opensquare.io/space/permanence/proposal/{cid}).
 
-Kind regards,<br>Permanence DAO"#,
+Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort IV Delegate<br>[Book a Call](https://cal.com/permanencedao) • [Delegate](https://{}.subsquare.io/user/{}/votes) • [Telegram](https://t.me/permanencedao) • [Twitter](https://x.com/permanencedao) • [Web](https://permanence.io)"#,
         O32::from1(previous_vote_count + 1),
         if let Some(vote) = vote {
             if vote {
@@ -95,6 +97,8 @@ Kind regards,<br>Permanence DAO"#,
             .lang(Lang::English)
             .to_words()
             .unwrap(),
+        chain.chain,
+        delegation_address,
     );
     content
 }
@@ -184,7 +188,12 @@ impl SubSquareClient {
             "https://{}.subsquare.io/api/sima/referenda/{}/comments",
             chain.chain, referendum.referendum_index,
         );
+        let delegation_address = match chain.chain.as_str() {
+            "polkadot" => self.config.voter.polkadot_real_account_address.as_str(),
+            _ => self.config.voter.kusama_real_account_address.as_str(),
+        };
         let content = get_vote_content(
+            chain,
             cid,
             track,
             policy,
@@ -193,6 +202,7 @@ impl SubSquareClient {
             member_count,
             vote,
             feedback_summary,
+            delegation_address,
         );
         let request_data = SubSquareCommentData {
             action: "comment".to_string(),
@@ -266,7 +276,12 @@ impl SubSquareClient {
             "https://{}.subsquare.io/api/sima/referenda/{}/comments/{comment_cid}/replies",
             chain.chain, referendum.referendum_index,
         );
+        let delegation_address = match chain.chain.as_str() {
+            "polkadot" => self.config.voter.polkadot_real_account_address.as_str(),
+            _ => self.config.voter.kusama_real_account_address.as_str(),
+        };
         let content = get_vote_content(
+            chain,
             cid,
             track,
             policy,
@@ -275,6 +290,7 @@ impl SubSquareClient {
             member_count,
             vote,
             feedback_summary,
+            delegation_address,
         );
         let request_data = SubSquareCommentReplyData {
             action: "comment".to_string(),

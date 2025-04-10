@@ -23,7 +23,7 @@ impl VotingPolicy {
             | Track::BigSpender => Some(Self {
                 participation_percent: 0,
                 quorum_percent: 60,
-                majority_percent: 57,
+                majority_percent: 0,
             }),
             Track::SmallTipper => Some(Self {
                 participation_percent: 30,

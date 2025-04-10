@@ -652,19 +652,6 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
-        let opensquare_referendum =
-            if let Some(referendum) = self.opensquare_client.fetch_referendum(cid).await? {
-                referendum
-            } else {
-                self.telegram_client
-                    .send_message(
-                        chat_id,
-                        Some(thread_id),
-                        "Referendum not found on OpenSquare. Contact admin.",
-                    )
-                    .await?;
-                return Ok(());
-            };
         let subsquare_referendum = if let Some(referendum) = self
             .subsquare_client
             .fetch_referendum(&chain, db_referendum.index)
@@ -752,16 +739,21 @@ impl TelegramBot {
         self.postgres
             .set_referendum_last_vote_id(db_referendum.id, Some(vote_id as u32))
             .await?;
+        let current_vote_count = self
+            .postgres
+            .get_referendum_vote_count(db_referendum.id)
+            .await?;
         let message = format!(
-            "Force-voted {}.\nhttps://{}.subscan.io/extrinsic/{}-{}",
+            "**Vote #{}: FORCE-{}**\nhttps://{}.subscan.io/extrinsic/{}-{}",
+            current_vote_count,
             (if let Some(vote) = vote {
                 if vote {
-                    "aye"
+                    "AYE"
                 } else {
-                    "nay"
+                    "NAY"
                 }
             } else {
-                "abstain"
+                "ABSTAIN"
             })
             .to_string()
             .to_uppercase(),
@@ -770,7 +762,7 @@ impl TelegramBot {
             extrinsic_index,
         );
         self.opensquare_client
-            .make_appendant_on_proposal(&chain, &opensquare_referendum.id, &message)
+            .make_appendant_on_proposal(&chain, cid, &message)
             .await?;
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)
