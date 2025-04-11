@@ -345,7 +345,7 @@ async fn _update_referendum_status(
                 db_referendum.telegram_topic_id,
                 &opensquare_referendum.title,
                 db_referendum.has_coi,
-                Some(&subsquare_referendum.state.status.to_string()),
+                Some(&subsquare_referendum.state.status.to_string().to_uppercase()),
                 &format!("V{current_vote_count}"),
                 "✅",
             )
@@ -367,8 +367,8 @@ async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
             .get_referendum_by_index(chain.id, subsquare_referendum.referendum_index)
             .await?;
         if let Some(db_referendum) = maybe_db_referendum.as_ref() {
-            if db_referendum.status == subsquare_referendum.state.status
-                || db_referendum.is_archived
+            if db_referendum.status != subsquare_referendum.state.status
+                && !db_referendum.is_archived
             {
                 log::info!(
                     "Update {} referendum #{} state: {} -> {}",
