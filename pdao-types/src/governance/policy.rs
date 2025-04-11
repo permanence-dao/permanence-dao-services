@@ -7,7 +7,7 @@ pub struct VotingPolicy {
 }
 
 impl VotingPolicy {
-    pub fn voting_policy_for_track(track: Track) -> Option<VotingPolicy> {
+    pub fn voting_policy_for_track(track: &Track) -> Option<VotingPolicy> {
         match track {
             Track::Root
             | Track::WhitelistedCaller
