@@ -11,7 +11,8 @@ use pdao_referendum_importer::{ReferendumImportError, ReferendumImporter};
 use pdao_subsquare_client::SubSquareClient;
 use pdao_substrate_client::SubstrateClient;
 use pdao_telegram_client::TelegramClient;
-use pdao_types::governance::ReferendumStatus;
+use pdao_types::governance::subsquare::SubSquareReferendum;
+use pdao_types::governance::{Referendum, ReferendumStatus};
 use pdao_types::substrate::chain::Chain;
 use pdao_voter::Voter;
 use regex::Regex;
@@ -217,93 +218,188 @@ async fn get_polkadot_snapshot_height() -> anyhow::Result<u64> {
     substrate_client.get_finalized_block_number().await
 }
 
+async fn import_referendum(
+    referendum_importer: &ReferendumImporter,
+    telegram_client: &TelegramClient,
+    chain: &Chain,
+    referendum: &SubSquareReferendum,
+) -> anyhow::Result<bool> {
+    log::info!(
+        "Try to import {} referendum {}.",
+        chain.display,
+        referendum.referendum_index
+    );
+    let snapshot_height = match chain.token_ticker.as_str() {
+        "DOT" => referendum.state.block.number,
+        _ => get_polkadot_snapshot_height().await?,
+    };
+    if let Err(error) = referendum_importer
+        .import_referendum(chain, referendum.referendum_index, snapshot_height)
+        .await
+    {
+        let message = match error {
+            ReferendumImportError::AlreadyImported => format!(
+                "Error while auto-importing {} referendum {}. It has already been imported.",
+                chain.display, referendum.referendum_index,
+            ),
+            ReferendumImportError::ReferendumNotFoundOnSubSquare => format!(
+                "Error while auto-importing {} referendum {}. Referendum not found on SubSquare.",
+                chain.display, referendum.referendum_index,
+            ),
+            ReferendumImportError::SystemError(description) => format!(
+                "System error while auto-importing {} referendum {}: {description}",
+                chain.display, referendum.referendum_index,
+            ),
+        };
+        telegram_client
+            .send_message(CONFIG.telegram.chat_id, None, &message)
+            .await?;
+        log::error!("{message}");
+        Ok(false)
+    } else {
+        telegram_client
+            .send_message(
+                CONFIG.telegram.chat_id,
+                None,
+                &format!(
+                    "🗳️ {} referendum {} imported:\n{}",
+                    chain.display,
+                    referendum.referendum_index,
+                    referendum
+                        .title
+                        .clone()
+                        .unwrap_or("No title".to_string())
+                        .replace("_", "\\_"),
+                ),
+            )
+            .await?;
+        log::info!(
+            "{} referendum {} imported.",
+            chain.display,
+            referendum.referendum_index
+        );
+        Ok(true)
+    }
+}
+
+async fn _update_referendum_status(
+    postgres: &PostgreSQLStorage,
+    opensquare_client: &OpenSquareClient,
+    telegram_client: &TelegramClient,
+    db_referendum: &Referendum,
+    subsquare_referendum: &SubSquareReferendum,
+    chain: &Chain,
+) -> anyhow::Result<()> {
+    log::info!(
+        "Update {} referendum #{} state: {} -> {}",
+        chain.display,
+        db_referendum.index,
+        db_referendum.status,
+        subsquare_referendum.state.status,
+    );
+    postgres
+        .update_referendum_status(db_referendum.id, &subsquare_referendum.state.status)
+        .await?;
+    telegram_client
+        .send_message(
+            db_referendum.telegram_chat_id,
+            Some(db_referendum.telegram_topic_id),
+            &format!(
+                "{} {}",
+                subsquare_referendum.state.status.get_icon(),
+                subsquare_referendum.state.status
+            ),
+        )
+        .await?;
+    let opensquare_cid = if let Some(opensquare_cid) = db_referendum.opensquare_cid.as_ref() {
+        opensquare_cid
+    } else {
+        log::error!("Opensquare CID not found - exit.");
+        return Ok(());
+    };
+    let opensquare_referendum = if let Some(opensquare_referendum) =
+        opensquare_client.fetch_referendum(opensquare_cid).await?
+    {
+        opensquare_referendum
+    } else {
+        log::error!("Opensquare referendum not found - exit.");
+        return Ok(());
+    };
+    if !db_referendum.is_terminated && subsquare_referendum.state.status.requires_termination() {
+        log::error!("New status requires termination.");
+        opensquare_client
+            .terminate_opensquare_proposal(chain, opensquare_cid)
+            .await?;
+        postgres.terminate_referendum(db_referendum.id).await?;
+        telegram_client
+            .send_message(
+                db_referendum.telegram_chat_id,
+                Some(db_referendum.telegram_topic_id),
+                "OpenSquare referendum terminated.",
+            )
+            .await?;
+        let current_vote_count = postgres.get_referendum_vote_count(db_referendum.id).await?;
+        telegram_client
+            .update_referendum_topic_name(
+                db_referendum.telegram_chat_id,
+                db_referendum.telegram_topic_id,
+                &opensquare_referendum.title,
+                db_referendum.has_coi,
+                Some(&subsquare_referendum.state.status.to_string()),
+                &format!("V{current_vote_count}"),
+                "✅",
+            )
+            .await?;
+    }
+    Ok(())
+}
+
 async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
     let postgres = PostgreSQLStorage::new(&CONFIG).await?;
+    let _opensquare_client = OpenSquareClient::new(&CONFIG)?;
     let subsquare_client = SubSquareClient::new(&CONFIG)?;
     let telegram_client = TelegramClient::new(&CONFIG);
     let referendum_importer = ReferendumImporter::new(&CONFIG).await?;
     let referenda = subsquare_client.fetch_referenda(chain, 1, 50).await?;
     let mut imported_referendum_count = 0;
-    for referendum in referenda.items.iter() {
-        if ReferendumStatus::Deciding == referendum.state.status
-            || ReferendumStatus::Confirming == referendum.state.status
-        {
-            let db_referendum = postgres
-                .get_referendum_by_index(chain.id, referendum.referendum_index)
-                .await?;
-            if db_referendum.is_none() {
-                /*
-                if referendum.content.is_none() {
-                    let message = format!(
-                        "{} referendum {} has entered the decision period but missing content. Temporarily skipping auto-import.",
-                        chain.display,
-                        referendum.referendum_index,
-                    );
-                    log::warn!("{message}");
-                    telegram_client
-                        .send_message(CONFIG.telegram.chat_id, None, &message)
-                        .await?;
-                    continue;
-                }
-                */
+    for subsquare_referendum in referenda.items.iter() {
+        let maybe_db_referendum = postgres
+            .get_referendum_by_index(chain.id, subsquare_referendum.referendum_index)
+            .await?;
+        if let Some(db_referendum) = maybe_db_referendum.as_ref() {
+            if db_referendum.status == subsquare_referendum.state.status
+                || db_referendum.is_archived
+            {
                 log::info!(
-                    "Try to import {} referendum {}.",
+                    "Update {} referendum #{} state: {} -> {}",
                     chain.display,
-                    referendum.referendum_index
+                    db_referendum.index,
+                    db_referendum.status,
+                    subsquare_referendum.state.status,
                 );
-                let snapshot_height = match chain.token_ticker.as_str() {
-                    "DOT" => referendum.state.block.number,
-                    _ => get_polkadot_snapshot_height().await?,
-                };
-                if let Err(error) = referendum_importer
-                    .import_referendum(chain, referendum.referendum_index, snapshot_height)
-                    .await
-                {
-                    let message = match error {
-                        ReferendumImportError::AlreadyImported => format!(
-                            "Error while auto-importing {} referendum {}. It has already been imported.",
-                            // "{} referendum {} already imported. You can use the `update` command under the related topic to update refererendum status and contents.",
-                            chain.display,
-                            referendum.referendum_index,
-                        ),
-                        ReferendumImportError::ReferendumNotFoundOnSubSquare => format!(
-                            "Error while auto-importing {} referendum {}. Referendum not found on SubSquare.",
-                            chain.display, referendum.referendum_index,
-                        ),
-                        ReferendumImportError::SystemError(description) => format!(
-                            "System error while auto-importing {} referendum {}: {description}",
-                            chain.display, referendum.referendum_index,
-                        ),
-                    };
-                    telegram_client
-                        .send_message(CONFIG.telegram.chat_id, None, &message)
-                        .await?;
-                    log::error!("{message}");
-                } else {
-                    telegram_client
-                        .send_message(
-                            CONFIG.telegram.chat_id,
-                            None,
-                            &format!(
-                                "🗳️ {} referendum {} imported:\n{}",
-                                chain.display,
-                                referendum.referendum_index,
-                                referendum
-                                    .title
-                                    .clone()
-                                    .unwrap_or("No title".to_string())
-                                    .replace("_", "\\_"),
-                            ),
-                        )
-                        .await?;
-                    imported_referendum_count += 1;
-                    log::info!(
-                        "{} referendum {} imported.",
-                        chain.display,
-                        referendum.referendum_index
-                    );
-                }
+                /*
+                update_referendum_status(
+                    &postgres,
+                    &opensquare_client,
+                    &telegram_client,
+                    db_referendum,
+                    subsquare_referendum,
+                    chain,
+                )
+                .await?;
+                 */
             }
+        } else if (ReferendumStatus::Deciding == subsquare_referendum.state.status
+            || ReferendumStatus::Confirming == subsquare_referendum.state.status)
+            && import_referendum(
+                &referendum_importer,
+                &telegram_client,
+                chain,
+                subsquare_referendum,
+            )
+            .await?
+        {
+            imported_referendum_count += 1;
         }
     }
     log::info!("Imported {} referenda.", imported_referendum_count);

@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS pdao_referendum
     message_archive             TEXT,
     is_terminated               BOOLEAN NOT NULL DEFAULT FALSE,
     has_coi                     BOOLEAN NOT NULL DEFAULT FALSE,
+    is_archived                 BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     CONSTRAINT pdao_referendum_fk_network

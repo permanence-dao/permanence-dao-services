@@ -74,7 +74,7 @@ impl TelegramBot {
         if let Some(referendum_id) = maybe_referendum_id {
             let message_archive = fs::read_to_string(file_path)?;
             self.postgres
-                .save_referendum_message_archive(referendum_id, &message_archive)
+                .archive_referendum(referendum_id, &message_archive)
                 .await?;
             log::info!("Saved message archive into the database.");
         }

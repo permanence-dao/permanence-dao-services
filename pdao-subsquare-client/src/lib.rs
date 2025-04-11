@@ -73,7 +73,9 @@ The **{}** track requires **{policy_summary}** according to our voting policy. T
 
 The full discussion can be found in our [internal voting](https://voting.opensquare.io/space/permanence/proposal/{cid}).
 
-Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort IV Delegate<br>[Book a Call](https://cal.com/permanencedao) • [Delegate](https://{}.subsquare.io/user/{}/votes) • [Telegram](https://t.me/permanencedao) • [Twitter](https://x.com/permanencedao) • [Web](https://permanence.io)"#,
+Please feel free to contact us through the links below for further discussion.
+
+Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort IV Delegate<br><br>📅 [Book Office Hours](https://cal.com/permanencedao/office-hours)<br>💬 [Public Telegram](https://t.me/permanencedao)<br>🐦 [Twitter](https://twitter.com/permanencedao)<br>🗳️ [Delegate](https://{}.subsquare.io/user/{}/votes)"#,
         O32::from1(previous_vote_count + 1),
         if let Some(vote) = vote {
             if vote {

@@ -2,45 +2,49 @@ use crate::postgres::PostgreSQLStorage;
 use pdao_types::governance::subsquare::SubSquareReferendum as OpensquareReferendum;
 use pdao_types::governance::track::Track;
 use pdao_types::governance::{Referendum, ReferendumStatus};
+use sqlx::FromRow;
 use std::str::FromStr;
 
-type ReferendumRecord = (
-    i32,
-    i32,
-    i32,
-    i32,
-    String,
-    Option<String>,
-    Option<String>,
-    String,
-    i64,
-    i32,
-    i32,
-    Option<String>,
-    Option<String>,
-    Option<i32>,
-    bool,
-    bool,
-);
+#[derive(Debug, FromRow)]
+struct ReferendumRow {
+    pub id: i32,
+    pub network_id: i32,
+    pub track_id: i32,
+    pub index: i32,
+    pub status: String,
+    pub title: Option<String>,
+    pub content: Option<String>,
+    pub content_type: String,
+    pub telegram_chat_id: i64,
+    pub telegram_topic_id: i32,
+    pub telegram_intro_message_id: i32,
+    pub opensquare_cid: Option<String>,
+    pub opensquare_post_uid: Option<String>,
+    pub last_vote_id: Option<i32>,
+    pub is_terminated: bool,
+    pub has_coi: bool,
+    pub is_archived: bool,
+}
 
-fn referendum_record_into_referendum(record: &ReferendumRecord) -> anyhow::Result<Referendum> {
+fn referendum_row_into_referendum(row: &ReferendumRow) -> anyhow::Result<Referendum> {
     Ok(Referendum {
-        id: record.0 as u32,
-        network_id: record.1 as u32,
-        track: Track::from_id(record.2 as u16).unwrap(),
-        index: record.3 as u32,
-        status: ReferendumStatus::from_str(&record.4)?,
-        title: record.5.clone(),
-        content: record.6.clone(),
-        content_type: record.7.clone(),
-        telegram_chat_id: record.8,
-        telegram_topic_id: record.9,
-        telegram_intro_message_id: record.10,
-        opensquare_cid: record.11.clone(),
-        opensquare_post_uid: record.12.clone(),
-        last_vote_id: record.13.map(|id| id as u32),
-        is_terminated: record.14,
-        has_coi: record.15,
+        id: row.id as u32,
+        network_id: row.network_id as u32,
+        track: Track::from_id(row.track_id as u16).unwrap(),
+        index: row.index as u32,
+        status: ReferendumStatus::from_str(&row.status)?,
+        title: row.title.clone(),
+        content: row.content.clone(),
+        content_type: row.content_type.clone(),
+        telegram_chat_id: row.telegram_chat_id,
+        telegram_topic_id: row.telegram_topic_id,
+        telegram_intro_message_id: row.telegram_intro_message_id,
+        opensquare_cid: row.opensquare_cid.clone(),
+        opensquare_post_uid: row.opensquare_post_uid.clone(),
+        last_vote_id: row.last_vote_id.map(|id| id as u32),
+        is_terminated: row.is_terminated,
+        has_coi: row.has_coi,
+        is_archived: row.is_archived,
     })
 }
 
@@ -85,9 +89,9 @@ impl PostgreSQLStorage {
         network_id: u32,
         referendum_index: u32,
     ) -> anyhow::Result<Option<Referendum>> {
-        let maybe_record: Option<ReferendumRecord> = sqlx::query_as(
+        let maybe_row: Option<ReferendumRow> = sqlx::query_as::<_, ReferendumRow>(
             r#"
-            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived
             FROM pdao_referendum
             WHERE network_id = $1 AND index = $2
             "#,
@@ -96,8 +100,8 @@ impl PostgreSQLStorage {
             .bind(referendum_index as i32)
             .fetch_optional(&self.connection_pool)
             .await?;
-        if let Some(record) = maybe_record {
-            Ok(Some(referendum_record_into_referendum(&record)?))
+        if let Some(row) = maybe_row {
+            Ok(Some(referendum_row_into_referendum(&row)?))
         } else {
             Ok(None)
         }
@@ -108,9 +112,9 @@ impl PostgreSQLStorage {
         chat_id: i64,
         thread_id: i32,
     ) -> anyhow::Result<Option<Referendum>> {
-        let maybe_record: Option<ReferendumRecord> = sqlx::query_as(
+        let maybe_row: Option<ReferendumRow> = sqlx::query_as::<_, ReferendumRow>(
             r#"
-            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived
             FROM pdao_referendum
             WHERE telegram_chat_id = $1 AND telegram_topic_id = $2
             "#,
@@ -119,8 +123,8 @@ impl PostgreSQLStorage {
             .bind(thread_id)
             .fetch_optional(&self.connection_pool)
             .await?;
-        if let Some(record) = maybe_record {
-            Ok(Some(referendum_record_into_referendum(&record)?))
+        if let Some(row) = maybe_row {
+            Ok(Some(referendum_row_into_referendum(&row)?))
         } else {
             Ok(None)
         }
@@ -159,19 +163,38 @@ impl PostgreSQLStorage {
         Ok(maybe_result.map(|r| r.0))
     }
 
-    pub async fn save_referendum_message_archive(
+    pub async fn archive_referendum(
         &self,
         referendum_id: u32,
         message_archive: &str,
     ) -> anyhow::Result<Option<i32>> {
         let maybe_result: Option<(i32,)> = sqlx::query_as(
             r#"
-            UPDATE pdao_referendum SET message_archive = $1
+            UPDATE pdao_referendum SET message_archive = $1, is_archived = true
             WHERE id = $2
             RETURNING id
             "#,
         )
         .bind(message_archive)
+        .bind(referendum_id as i32)
+        .fetch_optional(&self.connection_pool)
+        .await?;
+        Ok(maybe_result.map(|r| r.0))
+    }
+
+    pub async fn update_referendum_status(
+        &self,
+        referendum_id: u32,
+        referendum_status: &ReferendumStatus,
+    ) -> anyhow::Result<Option<i32>> {
+        let maybe_result: Option<(i32,)> = sqlx::query_as(
+            r#"
+            UPDATE pdao_referendum SET status = $1
+            WHERE id = $2
+            RETURNING id
+            "#,
+        )
+        .bind(referendum_status.to_string())
         .bind(referendum_id as i32)
         .fetch_optional(&self.connection_pool)
         .await?;

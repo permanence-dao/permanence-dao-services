@@ -23,6 +23,40 @@ pub enum ReferendumStatus {
     Executed,
 }
 
+impl ReferendumStatus {
+    pub fn get_icon(&self) -> &str {
+        match self {
+            ReferendumStatus::Confirming => "🟢",
+            ReferendumStatus::Deciding => "🗳️",
+            ReferendumStatus::Queueing => "📥",
+            ReferendumStatus::Preparing => "🛠️",
+            ReferendumStatus::Submitted => "📨",
+            ReferendumStatus::Approved => "✅",
+            ReferendumStatus::Cancelled => "🚫",
+            ReferendumStatus::Killed => "💀",
+            ReferendumStatus::TimedOut => "⌛",
+            ReferendumStatus::Rejected => "❌",
+            ReferendumStatus::Executed => "🎯",
+        }
+    }
+
+    pub fn requires_termination(&self) -> bool {
+        match self {
+            ReferendumStatus::Confirming => false,
+            ReferendumStatus::Deciding => false,
+            ReferendumStatus::Queueing => false,
+            ReferendumStatus::Preparing => false,
+            ReferendumStatus::Submitted => false,
+            ReferendumStatus::Approved => true,
+            ReferendumStatus::Cancelled => true,
+            ReferendumStatus::Killed => true,
+            ReferendumStatus::TimedOut => true,
+            ReferendumStatus::Rejected => true,
+            ReferendumStatus::Executed => true,
+        }
+    }
+}
+
 impl Display for ReferendumStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let display = match self {
@@ -82,6 +116,7 @@ pub struct Referendum {
     pub last_vote_id: Option<u32>,
     pub is_terminated: bool,
     pub has_coi: bool,
+    pub is_archived: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
