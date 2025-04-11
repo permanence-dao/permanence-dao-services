@@ -282,7 +282,7 @@ async fn import_referendum(
     }
 }
 
-async fn _update_referendum_status(
+async fn update_referendum_status(
     postgres: &PostgreSQLStorage,
     opensquare_client: &OpenSquareClient,
     telegram_client: &TelegramClient,
@@ -311,21 +311,21 @@ async fn _update_referendum_status(
             ),
         )
         .await?;
-    let opensquare_cid = if let Some(opensquare_cid) = db_referendum.opensquare_cid.as_ref() {
-        opensquare_cid
-    } else {
-        log::error!("Opensquare CID not found - exit.");
-        return Ok(());
-    };
-    let opensquare_referendum = if let Some(opensquare_referendum) =
-        opensquare_client.fetch_referendum(opensquare_cid).await?
-    {
-        opensquare_referendum
-    } else {
-        log::error!("Opensquare referendum not found - exit.");
-        return Ok(());
-    };
     if !db_referendum.is_terminated && subsquare_referendum.state.status.requires_termination() {
+        let opensquare_cid = if let Some(opensquare_cid) = db_referendum.opensquare_cid.as_ref() {
+            opensquare_cid
+        } else {
+            log::error!("Opensquare CID not found - exit.");
+            return Ok(());
+        };
+        let opensquare_referendum = if let Some(opensquare_referendum) =
+            opensquare_client.fetch_referendum(opensquare_cid).await?
+        {
+            opensquare_referendum
+        } else {
+            log::error!("Opensquare referendum not found - exit.");
+            return Ok(());
+        };
         log::error!("New status requires termination.");
         opensquare_client
             .terminate_opensquare_proposal(chain, opensquare_cid)
@@ -356,7 +356,7 @@ async fn _update_referendum_status(
 
 async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
     let postgres = PostgreSQLStorage::new(&CONFIG).await?;
-    let _opensquare_client = OpenSquareClient::new(&CONFIG)?;
+    let opensquare_client = OpenSquareClient::new(&CONFIG)?;
     let subsquare_client = SubSquareClient::new(&CONFIG)?;
     let telegram_client = TelegramClient::new(&CONFIG);
     let referendum_importer = ReferendumImporter::new(&CONFIG).await?;
@@ -370,14 +370,6 @@ async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
             if db_referendum.status != subsquare_referendum.state.status
                 && !db_referendum.is_archived
             {
-                log::info!(
-                    "Update {} referendum #{} state: {} -> {}",
-                    chain.display,
-                    db_referendum.index,
-                    db_referendum.status,
-                    subsquare_referendum.state.status,
-                );
-                /*
                 update_referendum_status(
                     &postgres,
                     &opensquare_client,
@@ -387,7 +379,6 @@ async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
                     chain,
                 )
                 .await?;
-                 */
             }
         } else if (ReferendumStatus::Deciding == subsquare_referendum.state.status
             || ReferendumStatus::Confirming == subsquare_referendum.state.status)
