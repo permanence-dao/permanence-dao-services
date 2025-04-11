@@ -326,7 +326,7 @@ async fn update_referendum_status(
             log::error!("Opensquare referendum not found - exit.");
             return Ok(());
         };
-        log::error!("New status requires termination.");
+        log::info!("New status requires termination.");
         opensquare_client
             .terminate_opensquare_proposal(chain, opensquare_cid)
             .await?;
