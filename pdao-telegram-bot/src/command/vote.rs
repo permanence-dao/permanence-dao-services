@@ -59,7 +59,7 @@ impl TelegramBot {
         } else if aye_percent <= voting_policy.majority_percent as u32 {
             vote = Some(false);
             message = format!(
-                "{message}\n{}% majority not met.\n**Voted #{}: NAY**",
+                "{message}\n{}% majority not met.\n**Vote #{}: NAY**",
                 voting_policy.majority_percent,
                 past_votes.len() + 1,
             );
@@ -160,8 +160,23 @@ impl TelegramBot {
                 conviction,
                 subsquare_cid.as_deref(),
                 subsquare_index,
+                db_referendum.has_coi,
+                false,
             )
             .await?;
+        for member_vote in opensquare_votes.iter() {
+            self.postgres
+                .save_member_vote(
+                    vote_id as u32,
+                    &member_vote.cid,
+                    db_referendum.network_id,
+                    db_referendum.id,
+                    db_referendum.index,
+                    &member_vote.address.to_ss58_check(),
+                    &member_vote.remark,
+                )
+                .await?;
+        }
         self.postgres
             .set_referendum_last_vote_id(db_referendum.id, Some(vote_id as u32))
             .await?;

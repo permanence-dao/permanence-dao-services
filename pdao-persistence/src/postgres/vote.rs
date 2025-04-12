@@ -15,6 +15,8 @@ type VoteRecord = (
     bool,
     Option<String>,
     Option<i32>,
+    bool,
+    bool,
 );
 
 fn vote_record_into_vote(record: &VoteRecord) -> anyhow::Result<Vote> {
@@ -32,6 +34,8 @@ fn vote_record_into_vote(record: &VoteRecord) -> anyhow::Result<Vote> {
         is_removed: record.10,
         subsquare_comment_cid: record.11.clone(),
         subsquare_comment_index: record.12.map(|i| i as u32),
+        has_coi: record.13,
+        is_forced: record.14,
     })
 }
 
@@ -50,11 +54,13 @@ impl PostgreSQLStorage {
         conviction: u8,
         subsquare_comment_cid: Option<&str>,
         subsquare_comment_index: Option<u32>,
+        has_coi: bool,
+        is_forced: bool,
     ) -> anyhow::Result<i32> {
         let result: (i32,) = sqlx::query_as(
             r#"
-            INSERT INTO pdao_vote (network_id, referendum_id, index, block_hash, block_number, extrinsic_index, vote, balance, conviction, subsquare_comment_cid, subsquare_comment_index)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            INSERT INTO pdao_vote (network_id, referendum_id, index, block_hash, block_number, extrinsic_index, vote, balance, conviction, subsquare_comment_cid, subsquare_comment_index, has_coi, is_forced)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING id
             "#,
         )
@@ -69,12 +75,14 @@ impl PostgreSQLStorage {
             .bind(conviction as i32)
             .bind(subsquare_comment_cid)
             .bind(subsquare_comment_index.map(|index| index as i32))
+            .bind(has_coi)
+            .bind(is_forced)
             .fetch_one(&self.connection_pool)
             .await?;
         Ok(result.0)
     }
 
-    pub async fn remove_vote(&self, vote_id: u32) -> anyhow::Result<Option<i32>> {
+    pub async fn set_vote_removed(&self, vote_id: u32) -> anyhow::Result<Option<i32>> {
         let maybe_result: Option<(i32,)> = sqlx::query_as(
             r#"
             UPDATE pdao_vote SET is_removed = true
@@ -91,7 +99,7 @@ impl PostgreSQLStorage {
     pub async fn get_referendum_votes(&self, referendum_id: u32) -> anyhow::Result<Vec<Vote>> {
         let db_votes: Vec<VoteRecord> = sqlx::query_as(
             r#"
-            SELECT id, network_id, referendum_id, index, block_hash, block_number, extrinsic_index, vote, balance, conviction, is_removed, subsquare_comment_cid, subsquare_comment_index
+            SELECT id, network_id, referendum_id, index, block_hash, block_number, extrinsic_index, vote, balance, conviction, is_removed, subsquare_comment_cid, subsquare_comment_index, has_coi, is_forced
             FROM pdao_vote
             WHERE referendum_id = $1
             ORDER BY id ASC
@@ -137,5 +145,35 @@ impl PostgreSQLStorage {
         .fetch_optional(&self.connection_pool)
         .await?;
         Ok(maybe_result.map(|r| r.0))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn save_member_vote(
+        &self,
+        vote_id: u32,
+        cid: &str,
+        network_id: u32,
+        referendum_id: u32,
+        referendum_index: u32,
+        address: &str,
+        feedback: &str,
+    ) -> anyhow::Result<i32> {
+        let result: (i32,) = sqlx::query_as(
+            r#"
+            INSERT INTO pdao_member_vote (vote_id, cid, network_id, referendum_id, index, address, feedback)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
+            "#,
+        )
+            .bind(vote_id as i32)
+            .bind(cid)
+            .bind(network_id as i32)
+            .bind(referendum_id as i32)
+            .bind(referendum_index as i32)
+            .bind(address)
+            .bind(feedback)
+            .fetch_one(&self.connection_pool)
+            .await?;
+        Ok(result.0)
     }
 }

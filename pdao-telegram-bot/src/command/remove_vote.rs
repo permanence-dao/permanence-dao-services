@@ -44,16 +44,17 @@ impl TelegramBot {
                 "⚙️ Removing the on-chain vote. Please give me some time.",
             )
             .await?;
-        let remove_vote_result = self.voter.remove_vote(&chain, db_referendum.index).await?;
+        let (_block_hash, block_number, extrinsic_index) =
+            self.voter.remove_vote(&chain, db_referendum.index).await?;
         self.postgres
             .set_referendum_last_vote_id(db_referendum.id, None)
             .await?;
-        self.postgres.remove_vote(last_vote_id).await?;
+        self.postgres.set_vote_removed(last_vote_id).await?;
         let message = format!(
             "Removed on-chain vote.\nhttps://{}.subscan.io/extrinsic/{}-{}",
             chain.chain.to_lowercase(),
-            remove_vote_result.0,
-            remove_vote_result.1
+            block_number,
+            extrinsic_index
         );
         self.opensquare_client
             .make_appendant_on_proposal(&chain, &opensquare_referendum.id, &message)

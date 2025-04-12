@@ -182,9 +182,9 @@ impl TelegramClient {
             .message_thread_id(thread_id)
             .maybe_icon_custom_emoji_id(checkmark_emoji_id)
             .name(if let Some(status_text) = maybe_status_text {
-                format!("[{status_text}] {coi_status}[{vote_count_status}] {name}")
+                format!("[{status_text}] [{vote_count_status}] {coi_status}{name}")
             } else {
-                format!("{coi_status}[{vote_count_status}] {name}")
+                format!("[{vote_count_status}] {coi_status}{name}")
             })
             .build();
         let result = self.telegram_api.edit_forum_topic(&params).await?;

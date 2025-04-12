@@ -76,6 +76,8 @@ impl TelegramBot {
                 conviction,
                 None,
                 None,
+                db_referendum.has_coi,
+                true,
             )
             .await?;
         self.postgres

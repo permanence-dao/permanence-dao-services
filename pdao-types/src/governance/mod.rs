@@ -135,4 +135,6 @@ pub struct Vote {
     pub is_removed: bool,
     pub subsquare_comment_cid: Option<String>,
     pub subsquare_comment_index: Option<u32>,
+    pub has_coi: bool,
+    pub is_forced: bool,
 }
