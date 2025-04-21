@@ -23,6 +23,7 @@ fn get_vote_content(
     vote_distribution: (u32, u32, u32),
     member_count: u32,
     vote: Option<bool>,
+    has_coi: bool,
     feedback_summary: &str,
     delegation_address: &str,
 ) -> String {
@@ -62,6 +63,11 @@ fn get_vote_content(
     } else {
         "".to_string()
     };
+    let coi_disclaimer = if has_coi {
+        "<br><br>**DISCLAIMER:** Our Decentralized Voices delegation voted to abstain on this referendum in accordance with our conflict of interest policy, [announced](https://x.com/PermanenceDAO/status/1905223487976783987) on the 27th of March, 2025."
+    } else {
+        ""
+    };
     let content = format!(
         r#"Dear Proposer,
 
@@ -73,7 +79,7 @@ The **{}** track requires **{policy_summary}** according to our voting policy. T
 
 The full discussion can be found in our [internal voting](https://voting.opensquare.io/space/permanence/proposal/{cid}).
 
-Please feel free to contact us through the links below for further discussion.
+Please feel free to contact us through the links below for further discussion.{coi_disclaimer}
 
 Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort IV Delegate<br><br>📅 [Book Office Hours](https://cal.com/permanencedao/office-hours)<br>💬 [Public Telegram](https://t.me/permanencedao)<br>🌐️ [Web](https://permanence.io)<br>🐦 [Twitter](https://twitter.com/permanencedao)<br>🗳️ [Delegate](https://{}.subsquare.io/user/{}/votes)"#,
         O32::from1(previous_vote_count + 1),
@@ -184,6 +190,7 @@ impl SubSquareClient {
         vote_distribution: (u32, u32, u32),
         member_count: u32,
         vote: Option<bool>,
+        has_coi: bool,
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {
         let url = format!(
@@ -203,6 +210,7 @@ impl SubSquareClient {
             vote_distribution,
             member_count,
             vote,
+            has_coi,
             feedback_summary,
             delegation_address,
         );
@@ -272,6 +280,7 @@ impl SubSquareClient {
         vote_distribution: (u32, u32, u32),
         member_count: u32,
         vote: Option<bool>,
+        has_coi: bool,
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {
         let url = format!(
@@ -291,6 +300,7 @@ impl SubSquareClient {
             vote_distribution,
             member_count,
             vote,
+            has_coi,
             feedback_summary,
             delegation_address,
         );

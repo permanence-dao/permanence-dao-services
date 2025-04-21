@@ -118,6 +118,7 @@ impl TelegramBot {
                         (aye_count, nay_count, abstain_count),
                         CONFIG.voter.member_count,
                         vote,
+                        db_referendum.has_coi,
                         &feedback,
                     )
                     .await?;
@@ -135,6 +136,7 @@ impl TelegramBot {
                         (aye_count, nay_count, abstain_count),
                         CONFIG.voter.member_count,
                         vote,
+                        db_referendum.has_coi,
                         &feedback,
                     )
                     .await?;
