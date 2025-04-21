@@ -132,7 +132,7 @@ impl TelegramBot {
                         opensquare_cid,
                         &db_referendum.track,
                         &voting_policy,
-                        past_votes.len() as u32 + 1,
+                        past_votes.len() as u32,
                         (aye_count, nay_count, abstain_count),
                         CONFIG.voter.member_count,
                         vote,
