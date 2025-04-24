@@ -57,7 +57,7 @@ impl TelegramBot {
             extrinsic_index
         );
         self.opensquare_client
-            .make_appendant_on_proposal(&chain, &opensquare_referendum.id, &message)
+            .make_appendant_on_proposal(&chain, opensquare_cid, &message)
             .await?;
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)
