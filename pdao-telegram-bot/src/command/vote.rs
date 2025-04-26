@@ -32,6 +32,7 @@ impl TelegramBot {
         let voting_policy = require_voting_policy(&db_referendum.track)?;
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
         let participation = aye_count + nay_count + abstain_count;
+        let abstain_percent = (abstain_count * 100) / CONFIG.voter.member_count;
         let participation_percent = (participation * 100) / CONFIG.voter.member_count;
         let quorum_percent = (aye_count * 100) / CONFIG.voter.member_count;
         let aye_percent = if (aye_count + nay_count) == 0 {
@@ -42,7 +43,14 @@ impl TelegramBot {
         let past_votes = self.postgres.get_referendum_votes(db_referendum.id).await?;
         let vote: Option<bool>;
         let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
-        if participation_percent < voting_policy.participation_percent as u32 {
+        if abstain_percent > voting_policy.abstain_threshold_percent as u32 {
+            vote = None;
+            message = format!(
+                "{abstain_percent}% abstinence, higher than the {}% threshold.\n**Vote #{}: ABSTAIN**",
+                voting_policy.abstain_threshold_percent,
+                past_votes.len() + 1,
+            );
+        } else if participation_percent < voting_policy.participation_percent as u32 {
             vote = None;
             message = format!(
                 "{message}\n{}% participation not met.\n**Vote #{}: ABSTAIN**",

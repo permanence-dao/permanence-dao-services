@@ -54,6 +54,7 @@ kusama_proxy_account_seed_phrase = "seed_phrase"
 sleep_seconds = 1800
 min_referendum_id = 1200
 member_count = 10
+voting_policy_version = "v0.2"
 
 [archive]
 working_dir_path = "/path/to/working/dir"

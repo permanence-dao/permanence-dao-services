@@ -83,6 +83,7 @@ pub struct VoterConfig {
     pub sleep_seconds: u64,
     pub min_referendum_id: u32,
     pub member_count: u32,
+    pub voting_policy_version: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
