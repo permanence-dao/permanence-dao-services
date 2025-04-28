@@ -14,4 +14,5 @@ pub struct Member {
     pub polkadot_payment_address: AccountId,
     pub kusama_address: AccountId,
     pub kusama_payment_address: AccountId,
+    pub is_on_leave: bool,
 }

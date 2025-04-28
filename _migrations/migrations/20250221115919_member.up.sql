@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS pdao_member
     polkadot_payment_address    VARCHAR(128) NOT NULL,
     kusama_address              VARCHAR(128) NOT NULL,
     kusama_payment_address      VARCHAR(128) NOT NULL,
+    is_on_leave                 BOOLEAN NOT NULL DEFAULT FALSE,
     created_at                  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at                  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     CONSTRAINT pda_member_u_telegram_username UNIQUE (telegram_username),
