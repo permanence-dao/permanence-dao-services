@@ -74,7 +74,7 @@ fn get_vote_content(
 
 Thank you for your proposal. Our **{}** vote on this proposal is **{}**.
 
-The **{}** track requires **{policy_summary}** according to our [voting policy {}](https://docs.permanence.io/voting_policy/voting_policy_{}.html), and any referendum in which the **majority of members vote abstain receives an abstain vote**. This proposal has received **{} aye and {} nay** votes from **{} members**{abstain_summary}. Below is a summary of our members' comments:
+The **{}** track requires **{policy_summary}** according to our [voting policy {}](https://docs.permanence.io/voting_policy/voting_policy_{}.html), and any referendum in which the **majority of members vote abstain receives an abstain vote**. This proposal has received **{} aye and {} nay** votes from **{} available members**{abstain_summary}. Below is a summary of our members' comments:
 
 > {feedback_summary}
 
