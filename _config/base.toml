@@ -53,7 +53,6 @@ kusama_dv_delegation_account_address = "address"
 kusama_proxy_account_seed_phrase = "seed_phrase"
 sleep_seconds = 1800
 min_referendum_id = 1200
-member_count = 10
 voting_policy_version = "v0.2"
 
 [archive]

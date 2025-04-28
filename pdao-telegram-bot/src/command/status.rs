@@ -3,7 +3,7 @@ use crate::command::util::{
     require_opensquare_cid, require_opensquare_referendum, require_opensquare_votes,
     require_subsquare_referendum, require_thread, require_voting_policy,
 };
-use crate::{TelegramBot, CONFIG};
+use crate::TelegramBot;
 use pdao_types::governance::ReferendumStatus;
 use pdao_types::substrate::chain::Chain;
 
@@ -17,6 +17,7 @@ impl TelegramBot {
         let db_referendum = require_db_referendum(&self.postgres, chat_id, thread_id).await?;
         require_db_referendum_is_active(&db_referendum)?;
         let chain = Chain::from_id(db_referendum.network_id);
+        let voting_member_count = self.postgres.get_all_members(false).await?.len() as u32;
         let subsquare_referendum =
             require_subsquare_referendum(&self.subsquare_client, &chain, db_referendum.index)
                 .await?;
@@ -80,11 +81,12 @@ impl TelegramBot {
             let time_left = components.join(" ");
             message = format!("{message}: {time_left} left");
         }
+        message = format!("{message}\nCurrent Voting Members: {voting_member_count}");
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         let participation = aye_count + nay_count + abstain_count;
-        let participation_percent = (participation * 100) / CONFIG.voter.member_count;
-        let quorum_percent = (aye_count * 100) / CONFIG.voter.member_count;
-        let abstain_percent = (abstain_count * 100) / CONFIG.voter.member_count;
+        let participation_percent = (participation * 100) / voting_member_count;
+        let quorum_percent = (aye_count * 100) / voting_member_count;
+        let abstain_percent = (abstain_count * 100) / voting_member_count;
         let aye_percent = if (aye_count + nay_count) == 0 {
             0
         } else {

@@ -8,6 +8,7 @@ pub mod substrate;
 
 #[derive(Clone, Debug)]
 pub struct Member {
+    pub id: u32,
     pub name: String,
     pub telegram_username: String,
     pub polkadot_address: AccountId,

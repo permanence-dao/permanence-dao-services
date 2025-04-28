@@ -4,7 +4,7 @@ use crate::command::util::{
     require_subsquare_referendum, require_subsquare_referendum_active, require_thread,
     require_voting_admin, require_voting_policy,
 };
-use crate::{TelegramBot, CONFIG};
+use crate::TelegramBot;
 use pdao_types::substrate::chain::Chain;
 
 impl TelegramBot {
@@ -21,6 +21,7 @@ impl TelegramBot {
         require_db_referendum_is_active(&db_referendum)?;
         let opensquare_cid = require_opensquare_cid(&db_referendum)?;
         let chain = Chain::from_id(db_referendum.network_id);
+        let voting_member_count = self.postgres.get_all_members(false).await?.len() as u32;
         let subsquare_referendum =
             require_subsquare_referendum(&self.subsquare_client, &chain, db_referendum.index)
                 .await?;
@@ -32,9 +33,9 @@ impl TelegramBot {
         let voting_policy = require_voting_policy(&db_referendum.track)?;
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
         let participation = aye_count + nay_count + abstain_count;
-        let abstain_percent = (abstain_count * 100) / CONFIG.voter.member_count;
-        let participation_percent = (participation * 100) / CONFIG.voter.member_count;
-        let quorum_percent = (aye_count * 100) / CONFIG.voter.member_count;
+        let abstain_percent = (abstain_count * 100) / voting_member_count;
+        let participation_percent = (participation * 100) / voting_member_count;
+        let quorum_percent = (aye_count * 100) / voting_member_count;
         let aye_percent = if (aye_count + nay_count) == 0 {
             0
         } else {
@@ -124,7 +125,7 @@ impl TelegramBot {
                         &voting_policy,
                         past_votes.len() as u32 + 1,
                         (aye_count, nay_count, abstain_count),
-                        CONFIG.voter.member_count,
+                        voting_member_count,
                         vote,
                         db_referendum.has_coi,
                         &feedback,
@@ -142,7 +143,7 @@ impl TelegramBot {
                         &voting_policy,
                         past_votes.len() as u32,
                         (aye_count, nay_count, abstain_count),
-                        CONFIG.voter.member_count,
+                        voting_member_count,
                         vote,
                         db_referendum.has_coi,
                         &feedback,

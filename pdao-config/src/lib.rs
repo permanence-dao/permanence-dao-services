@@ -82,7 +82,6 @@ pub struct VoterConfig {
     pub kusama_proxy_account_seed_phrase: String,
     pub sleep_seconds: u64,
     pub min_referendum_id: u32,
-    pub member_count: u32,
     pub voting_policy_version: String,
 }
 

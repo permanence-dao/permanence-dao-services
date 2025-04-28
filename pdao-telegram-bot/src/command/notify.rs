@@ -22,7 +22,7 @@ impl TelegramBot {
         let voted_members: Vec<AccountId> = opensquare_votes.iter().map(|v| v.voter).collect();
         let non_voted_member_telegram_usernames: Vec<String> = self
             .postgres
-            .get_all_members()
+            .get_all_members(false)
             .await?
             .iter()
             .filter(|m| !voted_members.contains(&m.polkadot_address))
