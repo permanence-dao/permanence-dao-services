@@ -137,7 +137,7 @@ impl SubSquareClient {
         index: u32,
     ) -> anyhow::Result<Option<SubSquareReferendum>> {
         let url = format!(
-            "https://{}.subsquare.io/api/gov2/referendums/{index}?simple=false",
+            "https://{}-api.subsquare.io/gov2/referendums/{index}?simple=false",
             chain.chain,
         );
         let response = self.http_client.get(url).send().await?;
@@ -155,7 +155,7 @@ impl SubSquareClient {
         page_size: u16,
     ) -> anyhow::Result<SubSquareReferendumList> {
         let url = format!(
-            "https://{}.subsquare.io/api/gov2/referendums?simple=false&page_size={page_size}&page={page}",
+            "https://{}-api.subsquare.io/gov2/referendums?simple=false&page_size={page_size}&page={page}",
             chain.chain,
         );
         Ok(self
@@ -197,7 +197,7 @@ impl SubSquareClient {
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {
         let url = format!(
-            "https://{}.subsquare.io/api/sima/referenda/{}/comments",
+            "https://{}-api.subsquare.io/sima/referenda/{}/comments",
             chain.chain, referendum.referendum_index,
         );
         let delegation_address = match chain.chain.as_str() {
@@ -288,7 +288,7 @@ impl SubSquareClient {
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {
         let url = format!(
-            "https://{}.subsquare.io/api/sima/referenda/{}/comments/{comment_cid}/replies",
+            "https://{}-api.subsquare.io/sima/referenda/{}/comments/{comment_cid}/replies",
             chain.chain, referendum.referendum_index,
         );
         let delegation_address = match chain.chain.as_str() {
