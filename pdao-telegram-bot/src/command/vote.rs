@@ -33,43 +33,40 @@ impl TelegramBot {
         let voting_policy = require_voting_policy(&db_referendum.track)?;
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
         let participation = aye_count + nay_count + abstain_count;
-        let abstain_percent = (abstain_count * 100) / voting_member_count;
-        let participation_percent = (participation * 100) / voting_member_count;
-        let quorum_percent = (aye_count * 100) / voting_member_count;
-        let aye_percent = if (aye_count + nay_count) == 0 {
-            0
-        } else {
-            (aye_count * 100) / (aye_count + nay_count)
-        };
         let past_votes = self.postgres.get_referendum_votes(db_referendum.id).await?;
         let vote: Option<bool>;
         let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
-        if abstain_percent > voting_policy.abstain_threshold_percent as u32 {
+
+        let abstain_threshold =
+            voting_policy.abstain_threshold_percent as u32 * voting_member_count / 100;
+        let participation_threshold =
+            voting_policy.participation_percent as u32 * voting_member_count / 100;
+        let quorum_threshold = voting_policy.quorum_percent as u32 * voting_member_count / 100;
+        let majority_threshold = voting_policy.majority_percent as u32 * voting_member_count / 100;
+
+        if abstain_count > abstain_threshold {
             vote = None;
             message = format!(
-                "{abstain_percent}% abstinence, higher than the {}% threshold.\n**Vote #{}: ABSTAIN**",
-                voting_policy.abstain_threshold_percent,
+                "{message}\n{abstain_count} members abstained, higher than the {abstain_threshold}-member threshold.\n**Vote #{}: ABSTAIN**",
                 past_votes.len() + 1,
             );
-        } else if participation_percent < voting_policy.participation_percent as u32 {
+        } else if participation < participation_threshold {
             vote = None;
             message = format!(
-                "{message}\n{}% participation not met.\n**Vote #{}: ABSTAIN**",
-                voting_policy.participation_percent,
+                "{message}\n{participation_threshold} member required participation not met.\n**Vote #{}: ABSTAIN**",
                 past_votes.len() + 1,
             );
-        } else if quorum_percent < voting_policy.quorum_percent as u32 {
+        } else if aye_count < quorum_threshold {
             vote = Some(false);
             message = format!(
-                "{message}\n{}% quorum not met.\n**Vote #{}: NAY**",
-                voting_policy.quorum_percent,
+                "{message}\n{quorum_threshold}-member quorum not met.\n**Vote #{}: NAY**",
                 past_votes.len() + 1,
             );
-        } else if aye_percent <= voting_policy.majority_percent as u32 {
+        } else if aye_count <= majority_threshold {
             vote = Some(false);
             message = format!(
-                "{message}\n{}% majority not met.\n**Vote #{}: NAY**",
-                voting_policy.majority_percent,
+                "{message}\n{}-member majority not met.\n**Vote #{}: NAY**",
+                majority_threshold + 1,
                 past_votes.len() + 1,
             );
         } else {

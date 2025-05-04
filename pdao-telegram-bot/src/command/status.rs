@@ -84,33 +84,24 @@ impl TelegramBot {
         message = format!("{message}\nCurrent Voting Members: {voting_member_count}");
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         let participation = aye_count + nay_count + abstain_count;
-        let participation_percent = (participation * 100) / voting_member_count;
-        let quorum_percent = (aye_count * 100) / voting_member_count;
-        let abstain_percent = (abstain_count * 100) / voting_member_count;
-        let aye_percent = if (aye_count + nay_count) == 0 {
-            0
-        } else {
-            (aye_count * 100) / (aye_count + nay_count)
-        };
-        message = if abstain_percent > voting_policy.abstain_threshold_percent as u32 {
+
+        let abstain_threshold =
+            voting_policy.abstain_threshold_percent as u32 * voting_member_count / 100;
+        let participation_threshold =
+            voting_policy.participation_percent as u32 * voting_member_count / 100;
+        let quorum_threshold = voting_policy.quorum_percent as u32 * voting_member_count / 100;
+        let majority_threshold = voting_policy.majority_percent as u32 * voting_member_count / 100;
+
+        message = if abstain_count > abstain_threshold {
+            format!("{message}\n{abstain_count} members abstained, higher than the {abstain_threshold}-member threshold.\nABSTAIN")
+        } else if participation < participation_threshold {
+            format!("{message}\n{participation_threshold} member required participation not met.\nABSTAIN")
+        } else if aye_count < quorum_threshold {
+            format!("{message}\n{quorum_threshold}-member quorum not met.\nNAY",)
+        } else if aye_count <= majority_threshold {
             format!(
-                "{abstain_percent}% abstinence, higher than the {}% threshold.\nABSTAIN",
-                voting_policy.abstain_threshold_percent,
-            )
-        } else if participation_percent < voting_policy.participation_percent as u32 {
-            format!(
-                "{message}\n{}% participation not met.\nABSTAIN",
-                voting_policy.participation_percent,
-            )
-        } else if quorum_percent < voting_policy.quorum_percent as u32 {
-            format!(
-                "{message}\n{}% quorum not met.\nNAY",
-                voting_policy.quorum_percent,
-            )
-        } else if aye_percent <= voting_policy.majority_percent as u32 {
-            format!(
-                "{message}\n{}% majority not met.\nNAY",
-                voting_policy.majority_percent,
+                "{message}\n{}-member majority not met.\nNAY",
+                majority_threshold + 1,
             )
         } else {
             format!("{message}\nAYE")
