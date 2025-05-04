@@ -100,7 +100,7 @@ impl TelegramBot {
             format!("{message}\n{quorum_threshold}-member quorum not met.\nNAY",)
         } else if aye_count <= majority_threshold {
             format!(
-                "{message}\n>{}% majority in non-abstain votes not met.\nNAY",
+                "{message}\nRequired majority (more than {}%) of non-abstain votes not met.\nNAY",
                 voting_policy.majority_percent,
             )
         } else {

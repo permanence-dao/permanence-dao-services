@@ -65,7 +65,7 @@ impl TelegramBot {
         } else if aye_count <= majority_threshold {
             vote = Some(false);
             message = format!(
-                "{message}\n>{}% majority in non-abstain votes not met.\n**Vote #{}: NAY**",
+                "{message}\nRequired majority (more than {}%) of non-abstain votes not met.\n**Vote #{}: NAY**",
                 voting_policy.majority_percent,
                 past_votes.len() + 1,
             );
