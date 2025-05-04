@@ -81,7 +81,7 @@ impl TelegramBot {
             let time_left = components.join(" ");
             message = format!("{message}: {time_left} left");
         }
-        message = format!("{message}\nCurrent Voting Members: {voting_member_count}");
+        message = format!("{message}\n{voting_member_count} available members.");
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
         let participation = aye_count + nay_count + abstain_count;
 
