@@ -95,13 +95,13 @@ impl TelegramBot {
         message = if abstain_count > abstain_threshold {
             format!("{message}\n{abstain_count} members abstained, higher than the {abstain_threshold}-member threshold.\nABSTAIN")
         } else if participation < participation_threshold {
-            format!("{message}\n{participation_threshold} member required participation not met.\nABSTAIN")
+            format!("{message}\n{participation_threshold}-member required participation not met.\nABSTAIN")
         } else if aye_count < quorum_threshold {
             format!("{message}\n{quorum_threshold}-member quorum not met.\nNAY",)
         } else if aye_count <= majority_threshold {
             format!(
-                "{message}\n{}-member majority not met.\nNAY",
-                majority_threshold + 1,
+                "{message}\n>{}% majority in non-abstain votes not met.\nNAY",
+                voting_policy.majority_percent,
             )
         } else {
             format!("{message}\nAYE")
