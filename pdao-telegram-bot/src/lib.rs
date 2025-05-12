@@ -124,10 +124,12 @@ impl TelegramBot {
                     .await?;
             }
             "/leave" => {
-                self.process_mark_leave_command(username).await?;
+                self.process_mark_leave_command(chat_id, thread_id, username)
+                    .await?;
             }
             "/return" => {
-                self.process_mark_return_command(username).await?;
+                self.process_mark_return_command(chat_id, thread_id, username)
+                    .await?;
             }
             _ => {
                 // err - send message
