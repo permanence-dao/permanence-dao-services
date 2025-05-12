@@ -10,7 +10,14 @@ impl TelegramBot {
     ) -> anyhow::Result<()> {
         let member = require_member(&self.postgres, username).await?;
         if !member.is_on_leave {
-            return Err(anyhow::Error::msg(format!("@{username} is not on leave.")));
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    thread_id,
+                    &format!("You are not on leave, @{username}."),
+                )
+                .await?;
+            return Ok(());
         }
         self.postgres.mark_member_return(member.id).await?;
         self.telegram_client
