@@ -87,7 +87,7 @@ impl PostgreSQLStorage {
             r#"
             SELECT id, name, telegram_username, polkadot_address, polkadot_payment_address, kusama_address, kusama_payment_address, is_on_leave
             FROM pdao_member
-            WHERE username = $1
+            WHERE telegram_username = $1
             "#
         )
             .bind(username)
