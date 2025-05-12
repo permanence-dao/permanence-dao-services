@@ -87,7 +87,7 @@ impl PostgreSQLStorage {
     pub async fn get_member_by_username(&self, username: &str) -> anyhow::Result<Option<Member>> {
         let maybe_db_member: Option<MemberRow> = sqlx::query_as::<_, MemberRow>(
             r#"
-            SELECT id, name, telegram_username, polkadot_address, polkadot_payment_address, kusama_address, kusama_payment_address, is_on_leave
+            SELECT id, name, telegram_username, polkadot_address, polkadot_payment_address, kusama_address, kusama_payment_address, is_on_leave, membership_type_code
             FROM pdao_member
             WHERE telegram_username = $1
             "#
