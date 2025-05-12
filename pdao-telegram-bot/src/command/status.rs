@@ -90,7 +90,8 @@ impl TelegramBot {
         let participation_threshold =
             voting_policy.participation_percent as u32 * voting_member_count / 100;
         let quorum_threshold = voting_policy.quorum_percent as u32 * voting_member_count / 100;
-        let majority_threshold = voting_policy.majority_percent as u32 * voting_member_count / 100;
+        let majority_threshold =
+            voting_policy.majority_percent as u32 * (aye_count + nay_count) / 100;
 
         message = if abstain_count > abstain_threshold {
             format!("{message}\n{abstain_count} members abstained, higher than the {abstain_threshold}-member threshold.\nABSTAIN")
