@@ -20,7 +20,7 @@ impl TelegramBot {
             .send_message(
                 chat_id,
                 Some(thread_id),
-                &format!("See you soon, @{username}!"),
+                &format!("Happy holidays, @{username}! See you soon."),
             )
             .await?;
         Ok(())
