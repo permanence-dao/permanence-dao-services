@@ -1,4 +1,4 @@
-use crate::command::util::{require_member, require_thread};
+use crate::command::util::require_member;
 use crate::TelegramBot;
 
 impl TelegramBot {
@@ -8,18 +8,13 @@ impl TelegramBot {
         thread_id: Option<i32>,
         username: &str,
     ) -> anyhow::Result<()> {
-        let thread_id = require_thread(thread_id)?;
         let member = require_member(&self.postgres, username).await?;
         if member.is_on_leave {
             return Err(anyhow::Error::msg(format!("@{username} is not on leave.")));
         }
         self.postgres.mark_member_return(member.id).await?;
         self.telegram_client
-            .send_message(
-                chat_id,
-                Some(thread_id),
-                &format!("Welcome back, @{username}!"),
-            )
+            .send_message(chat_id, thread_id, &format!("Welcome back, @{username}!"))
             .await?;
         Ok(())
     }
