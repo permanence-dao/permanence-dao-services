@@ -8,7 +8,7 @@ impl TelegramBot {
         thread_id: Option<i32>,
     ) -> anyhow::Result<()> {
         fn get_member_list(members: &[Member], membership_type: MembershipType) -> String {
-            let list = members
+            let list_string = members
                 .iter()
                 .enumerate()
                 .filter(|m| m.1.membership_type == membership_type)
@@ -22,7 +22,11 @@ impl TelegramBot {
                 })
                 .collect::<Vec<String>>()
                 .join("\n");
-            if list.is_empty() { "N/A".to_string() } else { list }
+            if list_string.is_empty() {
+                "N/A".to_string()
+            } else {
+                list_string
+            }
         }
 
         let mut members = self.postgres.get_all_members(true).await?;
