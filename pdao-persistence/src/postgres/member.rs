@@ -38,7 +38,7 @@ impl PostgreSQLStorage {
         sqlx::query(
             r#"
             INSERT INTO pdao_member_leave (member_id)
-            VALUES (member_id)
+            VALUES ($1)
             RETURNING id
             "#,
         )
@@ -62,7 +62,7 @@ impl PostgreSQLStorage {
         sqlx::query(
             r#"
             INSERT INTO pdao_member_return (member_id)
-            VALUES (member_id)
+            VALUES ($1)
             RETURNING id
             "#,
         )
