@@ -9,7 +9,7 @@ impl TelegramBot {
     ) -> anyhow::Result<()> {
         fn get_member_list(members: &[Member], membership_type: MembershipType) -> String {
             if members.is_empty() {
-                return "-".to_string();
+                return "N/A".to_string();
             }
             members
                 .iter()
@@ -27,11 +27,13 @@ impl TelegramBot {
                 .join("\n")
         }
 
-        let members = self.postgres.get_all_members(true).await?;
+        let mut members = self.postgres.get_all_members(true).await?;
+        members.sort_by_key(|m| m.name.clone());
         let core_members = get_member_list(&members, MembershipType::Core);
         let community_members = get_member_list(&members, MembershipType::Community);
-        let message =
-            format!("CORE MEMBERS:\n{core_members}\n\nCOMMUNITY MEMBERS:\n{community_members}",);
+        let message = format!(
+            "**CORE MEMBERS:**\n{core_members}\n\n**COMMUNITY MEMBERS:**\n{community_members}",
+        );
         self.telegram_client
             .send_message(chat_id, thread_id, &message)
             .await?;
