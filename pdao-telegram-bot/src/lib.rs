@@ -131,6 +131,9 @@ impl TelegramBot {
                 self.process_mark_return_command(chat_id, thread_id, username)
                     .await?;
             }
+            "/memberlist" => {
+                self.process_member_list_command(chat_id, thread_id).await?;
+            }
             _ => {
                 // err - send message
             }

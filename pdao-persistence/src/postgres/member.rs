@@ -1,6 +1,6 @@
 use crate::postgres::PostgreSQLStorage;
 use pdao_types::substrate::account_id::AccountId;
-use pdao_types::Member;
+use pdao_types::{Member, MembershipType};
 use sqlx::FromRow;
 use std::str::FromStr;
 
@@ -14,6 +14,7 @@ struct MemberRow {
     pub kusama_address: String,
     pub kusama_payment_address: String,
     pub is_on_leave: bool,
+    pub membership_type_code: String,
 }
 
 impl TryInto<Member> for MemberRow {
@@ -29,6 +30,7 @@ impl TryInto<Member> for MemberRow {
             kusama_address: AccountId::from_str(&self.kusama_address)?,
             kusama_payment_address: AccountId::from_str(&self.kusama_payment_address)?,
             is_on_leave: self.is_on_leave,
+            membership_type: MembershipType::from(self.membership_type_code.as_str()),
         })
     }
 }
@@ -109,7 +111,7 @@ impl PostgreSQLStorage {
         };
         let db_members: Vec<MemberRow> = sqlx::query_as::<_, MemberRow>(
             format!(r#"
-            SELECT id, name, telegram_username, polkadot_address, polkadot_payment_address, kusama_address, kusama_payment_address, is_on_leave
+            SELECT id, name, telegram_username, polkadot_address, polkadot_payment_address, kusama_address, kusama_payment_address, is_on_leave, membership_type_code
             FROM pdao_member {on_leave_filter}
             ORDER BY id ASC
             "#).as_str(),
@@ -127,6 +129,7 @@ impl PostgreSQLStorage {
                 kusama_address: AccountId::from_str(&db_member.kusama_address)?,
                 kusama_payment_address: AccountId::from_str(&db_member.kusama_payment_address)?,
                 is_on_leave: db_member.is_on_leave,
+                membership_type: MembershipType::from(db_member.membership_type_code.as_str()),
             })
         }
         Ok(result)
