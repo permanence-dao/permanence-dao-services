@@ -10,6 +10,7 @@ use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::governance::track::Track;
 use pdao_types::governance::{Referendum, ReferendumStatus};
 use pdao_types::substrate::chain::Chain;
+use pdao_types::Member;
 
 pub(super) fn require_thread(thread_id: Option<i32>) -> anyhow::Result<i32> {
     if let Some(thread_id) = thread_id {
@@ -163,5 +164,18 @@ pub(super) fn require_voting_admin(username: &str) -> anyhow::Result<()> {
         ))
     } else {
         Ok(())
+    }
+}
+
+pub(super) async fn require_member(
+    postgres: &PostgreSQLStorage,
+    username: &str,
+) -> anyhow::Result<Member> {
+    if let Some(member) = postgres.get_member_by_username(username).await? {
+        Ok(member)
+    } else {
+        Err(anyhow::Error::msg(format!(
+            "@{username} is not registered as a member."
+        )))
     }
 }

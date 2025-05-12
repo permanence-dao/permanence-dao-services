@@ -1,1 +1,1 @@
--- Add down migration script here
+DROP TABLE pdao_member_vote CASCADE;

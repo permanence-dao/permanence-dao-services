@@ -2,6 +2,8 @@ pub mod archive;
 pub mod coi;
 pub mod force_vote;
 pub mod import;
+pub mod mark_leave;
+pub mod mark_return;
 pub mod notify;
 pub mod remove_vote;
 pub mod status;

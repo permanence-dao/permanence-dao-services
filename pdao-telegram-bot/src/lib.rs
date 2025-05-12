@@ -123,6 +123,12 @@ impl TelegramBot {
                 self.process_coi_command(chat_id, thread_id, false, username)
                     .await?;
             }
+            "/leave" => {
+                self.process_mark_leave_command(username).await?;
+            }
+            "/return" => {
+                self.process_mark_return_command(username).await?;
+            }
             _ => {
                 // err - send message
             }
