@@ -130,7 +130,7 @@ impl OpenSquareClient {
         let response = match response_result {
             Ok(response) => response,
             Err(error) => {
-                log::error!("Error while creating OpenSquare proposal: {}", error);
+                log::error!("Error while creating OpenSquare proposal: {error}");
                 return Err(error.into());
             }
         };
@@ -138,7 +138,7 @@ impl OpenSquareClient {
         let response_text = response.text().await?;
         if !status_code.is_success() {
             let error_message =
-                format!("Error response from OpenSquare proposal: {}", response_text);
+                format!("Error response from OpenSquare proposal: {response_text}");
             log::error!("{error_message}");
             return Err(anyhow::Error::msg(error_message));
         }
@@ -193,17 +193,14 @@ impl OpenSquareClient {
         let response = match response_result {
             Ok(response) => response,
             Err(error) => {
-                log::error!("Error while terminating OpenSquare proposal: {}", error);
+                log::error!("Error while terminating OpenSquare proposal: {error}");
                 return Err(error.into());
             }
         };
         let status_code = response.status();
         let response_text = response.text().await?;
         if !status_code.is_success() {
-            let error_message = format!(
-                "Error response from OpenSquare for termination: {}",
-                response_text
-            );
+            let error_message = format!("Error response from OpenSquare for termination: {response_text}");
             log::error!("{error_message}");
             return Err(anyhow::Error::msg(error_message));
         }
@@ -256,10 +253,7 @@ impl OpenSquareClient {
         let response = match response_result {
             Ok(response) => response,
             Err(error) => {
-                log::error!(
-                    "Error while posting appendant to OpenSquare proposal: {}",
-                    error
-                );
+                log::error!("Error while posting appendant to OpenSquare proposal: {error}");
                 return Err(error.into());
             }
         };

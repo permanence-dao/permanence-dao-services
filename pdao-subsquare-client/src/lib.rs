@@ -328,17 +328,14 @@ impl SubSquareClient {
         let response = match response_result {
             Ok(response) => response,
             Err(error) => {
-                log::error!("Error while posting SubSquare comment reply: {}", error);
+                log::error!("Error while posting SubSquare comment reply: {error}");
                 return Err(error.into());
             }
         };
         let status_code = response.status();
         let response_text = response.text().await?;
         if !status_code.is_success() {
-            let error_message = format!(
-                "Error while posting SubSquare comment reply: {}",
-                response_text
-            );
+            let error_message = format!("Error while posting SubSquare comment reply: {response_text}");
             log::error!("{error_message}");
             return Err(anyhow::Error::msg(error_message));
         }

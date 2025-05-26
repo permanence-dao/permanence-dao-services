@@ -1,8 +1,8 @@
-use frankenstein::{
-    client_reqwest::Bot, AsyncTelegramApi, ChatId, CreateForumTopicParams, DeleteForumTopicParams,
-    EditForumTopicParams, GetUpdatesParams, LinkPreviewOptions, Message, MethodResponse, ParseMode,
-    SendDocumentParams, SendMessageParams, Update,
-};
+use frankenstein::{client_reqwest::Bot, AsyncTelegramApi, ParseMode};
+use frankenstein::methods::{CreateForumTopicParams, DeleteForumTopicParams, EditForumTopicParams, GetUpdatesParams, SendDocumentParams, SendMessageParams};
+use frankenstein::response::MethodResponse;
+use frankenstein::types::{AllowedUpdate, ChatId, LinkPreviewOptions, Message};
+use frankenstein::updates::Update;
 use pdao_config::Config;
 use pdao_types::governance::opensquare::OpenSquareNewProposalResponse;
 use pdao_types::governance::subsquare::SubSquareReferendum;
@@ -26,10 +26,10 @@ impl TelegramClient {
             limit: None,
             timeout: None,
             allowed_updates: Some(vec![
-                frankenstein::AllowedUpdate::ChatMember,
-                frankenstein::AllowedUpdate::MyChatMember,
-                frankenstein::AllowedUpdate::Message,
-                frankenstein::AllowedUpdate::CallbackQuery,
+                AllowedUpdate::ChatMember,
+                AllowedUpdate::MyChatMember,
+                AllowedUpdate::Message,
+                AllowedUpdate::CallbackQuery,
             ]),
         };
         let result = self.telegram_api.get_updates(&params).await?;
@@ -91,7 +91,7 @@ impl TelegramClient {
         );
         let message = if let Some(content_summary) = &referendum.content_summary {
             if let Some(summary) = &content_summary.summary {
-                format!("{}\n\n**AI Summary:**\n{}", message, summary)
+                format!("{message}\n\n**AI Summary:**\n{summary}")
             } else {
                 message
             }

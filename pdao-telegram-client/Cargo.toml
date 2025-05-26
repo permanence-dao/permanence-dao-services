@@ -1,13 +1,16 @@
 [package]
 name = "pdao-telegram-client"
-version = "0.1.4"
-edition = "2021"
-rust-version = "1.77.2"
+version.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
 frankenstein = { workspace = true }
-html-escape = "0.2.13"
+html-escape = "0.2"
 pdao-config = { path = "../pdao-config" }
 pdao-types = { path = "../pdao-types" }
 log = { workspace = true }

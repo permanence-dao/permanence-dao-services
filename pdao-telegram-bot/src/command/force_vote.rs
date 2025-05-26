@@ -112,7 +112,7 @@ impl TelegramBot {
                 &opensquare_referendum.title,
                 db_referendum.has_coi,
                 None,
-                &format!("V{}", current_vote_count),
+                &format!("V{current_vote_count}"),
                 "🗳",
             )
             .await?;

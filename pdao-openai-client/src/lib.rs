@@ -35,14 +35,14 @@ impl OpenAIClient {
         let response = match response_result {
             Ok(response) => response,
             Err(error) => {
-                log::error!("OpenAI request error: {}", error);
+                log::error!("OpenAI request error: {error}");
                 return Err(error.into());
             }
         };
         let status_code = response.status();
         let response_text = response.text().await?;
         if !status_code.is_success() {
-            let error_message = format!("OpenAI request error: {}", response_text);
+            let error_message = format!("OpenAI request error: {response_text}");
             log::error!("{error_message}");
             return Err(anyhow::Error::msg(error_message));
         }
@@ -50,7 +50,7 @@ impl OpenAIClient {
         if let Some(response) = response.choices.first() {
             Ok(response.message.content.clone())
         } else {
-            let error_message = format!("Empty response from OpenAI: {}", response_text);
+            let error_message = format!("Empty response from OpenAI: {response_text}");
             Err(anyhow::Error::msg(error_message))
         }
     }
@@ -60,10 +60,7 @@ impl OpenAIClient {
         sender_username: &str,
         message: &str,
     ) -> anyhow::Result<String> {
-        let prompt = format!(
-            "Your name is Permie. You are a chatbot added to the Telegram chat group of Permanence DAO, a DAO that focuses on Open Governance in Polkadot. You specialize in Polkadot OpenGov, and assist the DAO members with their decision-making processes, and other issues related to blockchain governance. You received a message from user {}. Respond in no more than 200 words.",
-            sender_username,
-        );
+        let prompt = format!("Your name is Permie. You are a chatbot added to the Telegram chat group of Permanence DAO, a DAO that focuses on Open Governance in Polkadot. You specialize in Polkadot OpenGov, and assist the DAO members with their decision-making processes, and other issues related to blockchain governance. You received a message from user {sender_username}. Respond in no more than 200 words.");
         let request = OpenAICompletionRequest {
             model: OpenAIModel::GPT4OMini,
             messages: vec![

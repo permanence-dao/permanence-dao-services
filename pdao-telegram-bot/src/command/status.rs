@@ -70,13 +70,13 @@ impl TelegramBot {
             let minutes_left = (seconds_left - counted_seconds) / 60;
             let mut components: Vec<String> = Vec::new();
             if days_left > 0 {
-                components.push(format!("{}d", days_left));
+                components.push(format!("{days_left}d"));
             }
             if hours_left > 0 {
-                components.push(format!("{}hr", hours_left));
+                components.push(format!("{hours_left}hr"));
             }
             if days_left == 0 && minutes_left > 0 {
-                components.push(format!("{}min", minutes_left));
+                components.push(format!("{minutes_left}min"));
             }
             let time_left = components.join(" ");
             message = format!("{message}: {time_left} left");

@@ -8,6 +8,7 @@ use crate::TelegramBot;
 use pdao_types::substrate::chain::Chain;
 
 impl TelegramBot {
+    #[allow(clippy::cognitive_complexity)]
     pub(crate) async fn process_vote_command(
         &self,
         chat_id: i64,

@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use frankenstein::{Message, Update, UpdateContent};
+use frankenstein::types::Message;
+use frankenstein::updates::{Update, UpdateContent};
 use lazy_static::lazy_static;
 use pdao_config::Config;
 use pdao_service::Service;
@@ -59,13 +60,7 @@ impl TelegramBot {
         command: &str,
         args: &[String],
     ) -> anyhow::Result<()> {
-        log::info!(
-            "Process command {} for chat {} thread {:?} with arguments: {:?}",
-            command,
-            chat_id,
-            thread_id,
-            args,
-        );
+        log::info!("Process command {command} for chat {chat_id} thread {thread_id:?} with arguments: {args:?}");
         match command {
             "/archive" => {
                 self.process_archive_command(chat_id, thread_id, username)
@@ -149,7 +144,7 @@ impl TelegramBot {
         text: &str,
     ) -> anyhow::Result<()> {
         if CMD_REGEX.is_match(text) {
-            log::info!("New command: {}", text);
+            log::info!("New command: {text}");
             let (command, arguments): (String, Vec<String>) = {
                 let parts: Vec<String> = SPLITTER_REGEX.split(text).map(String::from).collect();
                 (
@@ -404,7 +399,7 @@ async fn import_referenda(chain: &Chain) -> anyhow::Result<()> {
             imported_referendum_count += 1;
         }
     }
-    log::info!("Imported {} referenda.", imported_referendum_count);
+    log::info!("Imported {imported_referendum_count} referenda.");
     Ok(())
 }
 
@@ -427,12 +422,12 @@ impl Service for TelegramBot {
             let delay_seconds = 60 * 30;
             loop {
                 if let Err(err) = import_referenda(&polkadot).await {
-                    log::error!("Import Polkadot referenda failed: {}", err);
+                    log::error!("Import Polkadot referenda failed: {err}");
                 }
                 if let Err(err) = import_referenda(&kusama).await {
-                    log::error!("Import Kusama referenda failed: {}", err);
+                    log::error!("Import Kusama referenda failed: {err}");
                 }
-                log::info!("Sleep for {} seconds.", delay_seconds);
+                log::info!("Sleep for {delay_seconds} seconds.");
                 tokio::time::sleep(std::time::Duration::from_secs(delay_seconds)).await;
             }
         });
@@ -446,7 +441,7 @@ impl Service for TelegramBot {
                     }
                 }
                 Err(error) => {
-                    log::error!("Error while receiving Telegram updates: {:?}", error);
+                    log::error!("Error while receiving Telegram updates: {error:?}");
                 }
             }
         }

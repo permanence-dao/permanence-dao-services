@@ -26,7 +26,7 @@ pub struct ReferendumImporter {
 }
 
 fn system_err(error: anyhow::Error, description: &str) -> ReferendumImportError {
-    log::error!("{description}: {:?}", error);
+    log::error!("{description}: {error:?}");
     ReferendumImportError::SystemError(description.to_string())
 }
 
@@ -54,7 +54,7 @@ impl ReferendumImporter {
             .get_referendum_by_index(chain.id, index)
             .await
             .map_err(|error| {
-                ReferendumImportError::SystemError(format!("Database error: {:?}", error))
+                ReferendumImportError::SystemError(format!("Database error: {error:?}"))
             })?;
         if maybe_db_referendum.is_some() {
             log::info!(

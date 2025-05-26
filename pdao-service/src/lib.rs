@@ -20,11 +20,8 @@ pub trait Service {
         loop {
             let result = self.run().await;
             if let Err(error) = result {
-                log::error!("{:?}", error);
-                log::error!(
-                    "Process exited with error. Will try again in {} seconds.",
-                    delay_seconds,
-                );
+                log::error!("{error:?}");
+                log::error!("Process exited with error. Will try again in {delay_seconds} seconds.");
                 tokio::time::sleep(std::time::Duration::from_secs(delay_seconds)).await;
             } else {
                 log::info!("Process completed successfully.");

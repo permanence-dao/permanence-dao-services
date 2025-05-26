@@ -61,7 +61,7 @@ impl TelegramBot {
                     .await?;
                 archive_thread_id
             };
-        log::info!("Archived file: {}", file_path);
+        log::info!("Archived file: {file_path}");
         self.telegram_client
             .upload_file(
                 file_path,
