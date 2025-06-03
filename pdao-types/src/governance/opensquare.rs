@@ -106,7 +106,7 @@ impl OpenSquareNewProposal {
         let now = Utc::now();
         let day = NaiveDate::from_ymd_opt(now.year(), now.month(), now.day()).unwrap();
         let start_of_day = NaiveDateTime::from(day);
-        let end_date = now.checked_add_days(Days::new(30)).unwrap();
+        let end_date = now.checked_add_days(Days::new(60)).unwrap();
         let end_day =
             NaiveDate::from_ymd_opt(end_date.year(), end_date.month(), end_date.day()).unwrap();
         Self {

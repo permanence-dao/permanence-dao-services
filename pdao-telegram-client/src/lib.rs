@@ -1,8 +1,11 @@
-use frankenstein::{client_reqwest::Bot, AsyncTelegramApi, ParseMode};
-use frankenstein::methods::{CreateForumTopicParams, DeleteForumTopicParams, EditForumTopicParams, GetUpdatesParams, SendDocumentParams, SendMessageParams};
+use frankenstein::methods::{
+    CreateForumTopicParams, DeleteForumTopicParams, EditForumTopicParams, GetUpdatesParams,
+    SendDocumentParams, SendMessageParams,
+};
 use frankenstein::response::MethodResponse;
 use frankenstein::types::{AllowedUpdate, ChatId, LinkPreviewOptions, Message};
 use frankenstein::updates::Update;
+use frankenstein::{client_reqwest::Bot, AsyncTelegramApi, ParseMode};
 use pdao_config::Config;
 use pdao_types::governance::opensquare::OpenSquareNewProposalResponse;
 use pdao_types::governance::subsquare::SubSquareReferendum;
