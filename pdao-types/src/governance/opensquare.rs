@@ -153,7 +153,7 @@ impl OpenSquareNewProposal {
             start_date: start_of_day.and_utc().timestamp_millis() as u64,
             end_date: NaiveDateTime::from(end_day).and_utc().timestamp_millis() as u64,
             snapshot_heights: OpenSquareSnapshotHeight {
-                polkadot: block_height,
+                polkadot: block_height - 500_000,
             },
             real_proposer: None,
             proposer_network: space_chain.chain.clone(),
