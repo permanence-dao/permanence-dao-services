@@ -103,7 +103,7 @@ impl OpenSquareClient {
         );
         let proposal = OpenSquareNewProposal::new(
             chain,
-            block_height,
+            block_height - 100_000,
             &self.config,
             referendum.referendum_index,
             Track::from_id(referendum.track_id).unwrap(),
