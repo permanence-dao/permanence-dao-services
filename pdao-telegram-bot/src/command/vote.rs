@@ -122,7 +122,7 @@ impl TelegramBot {
                         &first_vote_cid,
                         &db_referendum.track,
                         &voting_policy,
-                        past_votes.len() as u32 + 1,
+                        past_votes.len() as u32,
                         (aye_count, nay_count, abstain_count),
                         voting_member_count,
                         vote,
