@@ -28,6 +28,7 @@ fn get_vote_content(
     feedback_summary: &str,
     delegation_address: &str,
 ) -> String {
+    let quorum_threshold = policy.quorum_percent as u32 * member_count / 100;
     let policy_summary = match track {
         Track::Root
         | Track::WhitelistedCaller
@@ -42,12 +43,12 @@ fn get_vote_content(
         | Track::ReferendumCanceller
         | Track::ReferendumKiller => format!("{}% quorum", policy.quorum_percent),
         Track::SmallTipper | Track::BigTipper | Track::SmallSpender => format!(
-            "{}% participation and simple majority of non-abstain voters",
+            "{}% participation and simple majority of non-abstain votes",
             policy.participation_percent
         ),
         Track::MediumSpender => {
             format!(
-                "{}% quorum and simple majority of non-abstain voters",
+                "{}% quorum (at least {quorum_threshold} aye votes) and simple majority of non-abstain votes",
                 policy.quorum_percent
             )
         }
