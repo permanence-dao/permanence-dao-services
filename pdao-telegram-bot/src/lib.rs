@@ -382,25 +382,30 @@ impl TelegramBot {
     }
 
     async fn import_referenda(&self, chain: &Chain) -> anyhow::Result<()> {
-        let referenda = self.subsquare_client.fetch_referenda(chain, 1, 50).await?;
         let mut imported_referendum_count = 0;
-        for subsquare_referendum in referenda.items.iter() {
-            let maybe_db_referendum = self
-                .postgres
-                .get_referendum_by_index(chain.id, subsquare_referendum.referendum_index)
+        for page in 1..=3 {
+            let referenda = self
+                .subsquare_client
+                .fetch_referenda(chain, page, 30)
                 .await?;
-            if let Some(db_referendum) = maybe_db_referendum.as_ref() {
-                if db_referendum.status != subsquare_referendum.state.status
-                    && !db_referendum.is_archived
+            for subsquare_referendum in referenda.items.iter() {
+                let maybe_db_referendum = self
+                    .postgres
+                    .get_referendum_by_index(chain.id, subsquare_referendum.referendum_index)
+                    .await?;
+                if let Some(db_referendum) = maybe_db_referendum.as_ref() {
+                    if db_referendum.status != subsquare_referendum.state.status
+                        && !db_referendum.is_archived
+                    {
+                        self.update_referendum_status(db_referendum, subsquare_referendum, chain)
+                            .await?;
+                    }
+                } else if (ReferendumStatus::Deciding == subsquare_referendum.state.status
+                    || ReferendumStatus::Confirming == subsquare_referendum.state.status)
+                    && self.import_referendum(chain, subsquare_referendum).await?
                 {
-                    self.update_referendum_status(db_referendum, subsquare_referendum, chain)
-                        .await?;
+                    imported_referendum_count += 1;
                 }
-            } else if (ReferendumStatus::Deciding == subsquare_referendum.state.status
-                || ReferendumStatus::Confirming == subsquare_referendum.state.status)
-                && self.import_referendum(chain, subsquare_referendum).await?
-            {
-                imported_referendum_count += 1;
             }
         }
         log::info!("Imported {imported_referendum_count} referenda.");
