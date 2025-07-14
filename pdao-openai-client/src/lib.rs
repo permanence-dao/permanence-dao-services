@@ -140,7 +140,7 @@ impl OpenAIClient {
                 content: prompt,
             }],
             store: true,
-            temperature: 0.5,
+            temperature: 1.0,
         };
         self.fetch_response(request).await
     }
