@@ -1,8 +1,10 @@
 use pdao_config::{Config, OpenAPIConfig};
 use pdao_types::governance::opensquare::{OpenSquareReferendumVote, OpenSquareVote};
+use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::openai::{
     OpenAICompletionRequest, OpenAICompletionResponse, OpenAIMessage, OpenAIModel, OpenAIRole,
 };
+use pdao_types::substrate::chain::Chain;
 
 pub struct OpenAIClient {
     config: OpenAPIConfig,
@@ -81,12 +83,41 @@ impl OpenAIClient {
 
     pub async fn fetch_feedback_summary(
         &self,
+        chain: &Chain,
+        sub_square_referendum: &SubSquareReferendum,
+        vote: Option<bool>,
         votes: &[OpenSquareReferendumVote],
     ) -> anyhow::Result<String> {
         let mut prompt_parts: Vec<String> = Vec::new();
-        prompt_parts.push("I'm giving you below a list of voters, their votes, and their comments on a referendum. Please summarize all these in a single paragraph of roughly 80 words, without referring to the names of the voters and their specific votes. Use past tense.".to_string());
+        prompt_parts.push("You are a chatbot specializing in Polkadot OpenGov, helping the members of Permanence DAO by preparing summaries of their comments for their votes on certain referenda.".to_owned());
+        prompt_parts.push(format!(
+            "This specific job is for {} referendum number {}, titled '{}'",
+            chain.display,
+            sub_square_referendum.referendum_index,
+            serde_json::to_string(&sub_square_referendum.title)?
+        ));
+        prompt_parts.push(
+            "Below is the detailed information for the referendum in JSON format.".to_owned(),
+        );
+        let json = serde_json::to_string(&sub_square_referendum)?;
+        prompt_parts.push(serde_json::to_string(&json)?);
+        let vote = if let Some(vote) = vote {
+            if vote {
+                "AYE"
+            } else {
+                "NAY"
+            }
+        } else {
+            "ABSTAIN"
+        };
+        prompt_parts.push(format!(
+            "The vote of the DAO on this referendum determined by its voting policy that applies to this referendum is {vote}.",
+        ));
+        prompt_parts.push("Below the list of voters, their votes, and their comments for their votes. If the voter did not post comment for their vote, it is noted as 'No comment.'.".to_owned());
+        prompt_parts.push("Summarize all these in a single paragraph of roughly 100 words, without referring to the names of the voters and their specific votes.".to_owned());
+        prompt_parts.push("Use past tense. Do not start the summary with generic terms such as 'In a recent referendum...' etc. Do not start the summary with a generic sentence such as 'The members of the DAO...'.".to_owned());
         for (i, vote) in votes.iter().enumerate() {
-            let mut vote_prompt = format!("Voter No.{i}");
+            let mut vote_prompt = format!("\n\nVoter No.{i}");
             if vote.choices.contains(&OpenSquareVote::Aye) {
                 vote_prompt = format!("{vote_prompt} :: Aye");
             } else if vote.choices.contains(&OpenSquareVote::Nay) {
@@ -95,18 +126,20 @@ impl OpenAIClient {
                 vote_prompt = format!("{vote_prompt} :: Abstain");
             }
             if !vote.remark.is_empty() {
-                vote_prompt = format!("{vote_prompt}\n{}", vote.remark);
+                vote_prompt = format!("{vote_prompt}\n{}", serde_json::to_string(&vote.remark)?);
+            } else {
+                vote_prompt = "No comment.".to_owned();
             }
             prompt_parts.push(vote_prompt);
         }
         let prompt = prompt_parts.join("\n\n");
         let request = OpenAICompletionRequest {
-            model: OpenAIModel::GPT4OMini,
+            model: OpenAIModel::O3Mini20250131,
             messages: vec![OpenAIMessage {
                 role: OpenAIRole::User,
                 content: prompt,
             }],
-            store: false,
+            store: true,
             temperature: 0.5,
         };
         self.fetch_response(request).await

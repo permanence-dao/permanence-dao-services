@@ -14,6 +14,10 @@ pub enum OpenAIRole {
 pub enum OpenAIModel {
     #[serde(rename = "gpt-4o-mini")]
     GPT4OMini,
+    #[serde(rename = "o3-mini-2025-01-31")]
+    O3Mini20250131,
+    #[serde(rename = "o4-mini-2025-04-16")]
+    O4Mini20250416,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

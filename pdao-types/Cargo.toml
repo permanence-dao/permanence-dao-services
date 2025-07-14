@@ -17,7 +17,7 @@ pallet-identity = "40.1"
 parity-scale-codec = { workspace = true }
 pallet-balances = "41.1"
 pdao-config = { path = "../pdao-config" }
-frame-system = "40.1"
+frame-system = "41.0"
 serde = { workspace = true, features = ["derive"] }
 sp-core = { workspace = true }
 thiserror = { workspace = true }

@@ -106,7 +106,7 @@ impl TelegramBot {
             log::info!("Get OpenAI feedback summary.");
             let feedback = self
                 .openai_client
-                .fetch_feedback_summary(&opensquare_votes)
+                .fetch_feedback_summary(&chain, &subsquare_referendum, vote, &opensquare_votes)
                 .await?;
             log::info!("Post SubSquare comment.");
             let (cid, index) = if let Some(Some(first_vote_cid)) = past_votes

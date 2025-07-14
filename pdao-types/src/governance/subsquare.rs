@@ -2,7 +2,7 @@ use crate::governance::ReferendumStatus;
 use crate::substrate::account_id::AccountId;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareBlock {
     #[serde(rename = "blockHeight")]
@@ -13,7 +13,7 @@ pub struct SubSquareBlock {
     pub timestamp: u64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareExtrinsic {
     #[serde(rename = "blockHeight")]
@@ -25,7 +25,7 @@ pub struct SubSquareExtrinsic {
     pub event_index: u32,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareAssetKind {
     pub chain: String,
@@ -34,7 +34,7 @@ pub struct SubSquareAssetKind {
     pub symbol: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareBeneficiary {
     pub chain: String,
@@ -51,7 +51,7 @@ pub struct SubSquareReferendumSummary {
     pub block: SubSquareBlock,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendumState {
     #[serde(rename = "name")]
@@ -60,14 +60,14 @@ pub struct SubSquareReferendumState {
     pub block: SubSquareBlock,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendumContentSummary {
     pub summary: Option<String>,
     pub model: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendumLocalSpend {
     pub is_spend_local: bool,
@@ -78,7 +78,7 @@ pub struct SubSquareReferendumLocalSpend {
     pub beneficiary: AccountId,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendumNonLocalSpend {
     pub is_spend_local: bool,
@@ -87,14 +87,14 @@ pub struct SubSquareReferendumNonLocalSpend {
     pub beneficiary: SubSquareBeneficiary,
 }
 
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, Serialize)]
 #[serde(untagged)]
 pub enum SubSquareReferendumSpend {
     NonLocalSpend(SubSquareReferendumNonLocalSpend),
     LocalSpend(SubSquareReferendumLocalSpend),
 }
 
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareTrackInfo {
     pub id: u16,
@@ -108,7 +108,7 @@ pub struct SubSquareTrackInfo {
     pub min_enactment_period: u32,
 }
 
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendumOnChainDecisionInfo {
     #[serde(rename = "since")]
@@ -117,7 +117,7 @@ pub struct SubSquareReferendumOnChainDecisionInfo {
     pub confirm_start_block_number: Option<u64>,
 }
 
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendumOnChainInfo {
     #[serde(rename = "submitted")]
@@ -126,13 +126,13 @@ pub struct SubSquareReferendumOnChainInfo {
     pub decision_info: Option<SubSquareReferendumOnChainDecisionInfo>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendumOnChainData {
     pub info: SubSquareReferendumOnChainInfo,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubSquareReferendum {
     #[serde(rename = "_id")]
