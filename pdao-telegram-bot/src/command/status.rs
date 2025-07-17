@@ -24,8 +24,13 @@ impl TelegramBot {
         let opensquare_cid = require_opensquare_cid(&db_referendum)?;
         let opensquare_referendum =
             require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
+        let member_account_ids = self
+            .postgres
+            .get_all_member_account_ids_for_chain(true, db_referendum.network_id)
+            .await?;
         let opensquare_votes =
-            require_opensquare_votes(&self.opensquare_client, opensquare_cid).await?;
+            require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
+                .await?;
 
         let voting_policy = require_voting_policy(&db_referendum.track)?;
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);

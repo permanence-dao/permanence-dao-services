@@ -17,8 +17,13 @@ impl TelegramBot {
         let db_referendum = require_db_referendum(&self.postgres, chat_id, thread_id).await?;
         require_db_referendum_is_active(&db_referendum)?;
         let opensquare_cid = require_opensquare_cid(&db_referendum)?;
+        let member_account_ids = self
+            .postgres
+            .get_all_member_account_ids_for_chain(true, db_referendum.network_id)
+            .await?;
         let opensquare_votes =
-            require_opensquare_votes(&self.opensquare_client, opensquare_cid).await?;
+            require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
+                .await?;
         let voted_members: Vec<AccountId> = opensquare_votes.iter().map(|v| v.voter).collect();
         let non_voted_member_telegram_usernames: Vec<String> = self
             .postgres

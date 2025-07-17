@@ -9,6 +9,7 @@ use pdao_types::governance::policy::VotingPolicy;
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::governance::track::Track;
 use pdao_types::governance::{Referendum, ReferendumStatus};
+use pdao_types::substrate::account_id::AccountId;
 use pdao_types::substrate::chain::Chain;
 use pdao_types::Member;
 
@@ -92,12 +93,17 @@ pub(super) fn require_db_referendum_is_active(db_referendum: &Referendum) -> any
 pub(super) async fn require_opensquare_votes(
     opensquare_client: &OpenSquareClient,
     opensquare_cid: &str,
+    member_account_ids: &[AccountId],
 ) -> anyhow::Result<Vec<OpenSquareReferendumVote>> {
     if let Some(opensquare_votes) = opensquare_client
         .fetch_referendum_votes(opensquare_cid)
         .await?
     {
-        Ok(opensquare_votes)
+        Ok(opensquare_votes
+            .iter()
+            .filter(|v| member_account_ids.contains(&v.voter))
+            .cloned()
+            .collect())
     } else {
         Err(anyhow::Error::msg(
             "Referendum not found on OpenSquare by CID. Contact admin.",

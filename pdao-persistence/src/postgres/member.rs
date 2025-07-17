@@ -1,5 +1,6 @@
 use crate::postgres::PostgreSQLStorage;
 use pdao_types::substrate::account_id::AccountId;
+use pdao_types::substrate::chain::Chain;
 use pdao_types::{Member, MembershipType};
 use sqlx::FromRow;
 use std::str::FromStr;
@@ -133,5 +134,20 @@ impl PostgreSQLStorage {
             })
         }
         Ok(result)
+    }
+
+    pub async fn get_all_member_account_ids_for_chain(
+        &self,
+        include_on_leave: bool,
+        network_id: u32,
+    ) -> anyhow::Result<Vec<AccountId>> {
+        let members = self.get_all_members(include_on_leave).await?;
+        let chain = Chain::from_id(network_id);
+        let member_account_ids = match chain.chain.as_str() {
+            "polkadot" => members.iter().map(|m| m.polkadot_address).collect(),
+            "kusama" => members.iter().map(|m| m.kusama_address).collect(),
+            _ => Vec::new(),
+        };
+        Ok(member_account_ids)
     }
 }
