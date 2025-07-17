@@ -70,7 +70,7 @@ impl OpenSquareClient {
         Ok(Some(votes))
     }
 
-    pub async fn create_new_opensquare_proposal(
+    pub async fn create_new_proposal(
         &self,
         chain: &Chain,
         block_height: u64,
@@ -151,11 +151,7 @@ impl OpenSquareClient {
         Ok(response)
     }
 
-    pub async fn terminate_opensquare_proposal(
-        &self,
-        chain: &Chain,
-        cid: &str,
-    ) -> anyhow::Result<bool> {
+    pub async fn terminate_proposal(&self, chain: &Chain, cid: &str) -> anyhow::Result<bool> {
         log::info!(
             "Terminate OpenSquare proposal for {} referendum with CID {cid}.",
             chain.token_ticker,

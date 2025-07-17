@@ -23,7 +23,7 @@ impl TelegramBot {
             require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
         require_opensquare_referendum_active(&opensquare_referendum)?;
         self.opensquare_client
-            .terminate_opensquare_proposal(&chain, opensquare_cid)
+            .terminate_proposal(&chain, opensquare_cid)
             .await?;
         self.postgres.terminate_referendum(db_referendum.id).await?;
         self.telegram_client

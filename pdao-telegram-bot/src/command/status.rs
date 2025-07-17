@@ -26,6 +26,7 @@ impl TelegramBot {
             require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
         let opensquare_votes =
             require_opensquare_votes(&self.opensquare_client, opensquare_cid).await?;
+
         let voting_policy = require_voting_policy(&db_referendum.track)?;
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
         let block_number = subsquare_referendum.state.block.number;

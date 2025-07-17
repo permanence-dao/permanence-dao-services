@@ -77,7 +77,7 @@ impl ReferendumImporter {
         };
         let new_opensquare_proposal_response = self
             .opensquare_client
-            .create_new_opensquare_proposal(chain, snapshot_height, &referendum)
+            .create_new_proposal(chain, snapshot_height, &referendum)
             .await
             .map_err(|error| system_err(error, "OpenSquare error."))?;
         let new_telegram_topic_response = self
