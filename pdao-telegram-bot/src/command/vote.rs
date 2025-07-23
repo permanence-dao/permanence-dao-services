@@ -31,7 +31,7 @@ impl TelegramBot {
             require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
         let member_account_ids = self
             .postgres
-            .get_all_member_account_ids_for_chain(true, db_referendum.network_id)
+            .get_all_member_account_ids_for_chain(true, Chain::polkadot().id)
             .await?;
         let opensquare_votes =
             require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)

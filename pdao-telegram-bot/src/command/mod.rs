@@ -1,5 +1,6 @@
 pub mod archive;
 pub mod coi;
+pub mod feedback_summary;
 pub mod force_vote;
 pub mod import;
 pub mod mark_leave;

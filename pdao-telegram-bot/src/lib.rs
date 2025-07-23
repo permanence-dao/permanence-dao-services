@@ -67,6 +67,10 @@ impl TelegramBot {
                 self.process_archive_command(chat_id, thread_id, username)
                     .await?;
             }
+            "/feedbacksummary" => {
+                self.process_feedback_summary_command(chat_id, thread_id)
+                    .await?;
+            }
             "/forceabstain" => {
                 self.process_force_vote_command(chat_id, thread_id, username, None)
                     .await?;
