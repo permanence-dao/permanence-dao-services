@@ -99,11 +99,21 @@ pub(super) async fn require_opensquare_votes(
         .fetch_referendum_votes(opensquare_cid)
         .await?
     {
-        Ok(opensquare_votes
+        for (i, member_account_id) in member_account_ids.iter().enumerate() {
+            log::info!("M{i} :: {member_account_id}");
+        }
+        for (i, vote) in opensquare_votes.iter().enumerate() {
+            log::info!("V{i} :: {} :: {}", vote.voter, vote.remark);
+        }
+        let filtered_votes: Vec<OpenSquareReferendumVote> = opensquare_votes
             .iter()
             .filter(|v| member_account_ids.contains(&v.voter))
             .cloned()
-            .collect())
+            .collect();
+        for (i, vote) in filtered_votes.iter().enumerate() {
+            log::info!("FV{i} :: {} :: {}", vote.voter, vote.remark);
+        }
+        Ok(filtered_votes)
     } else {
         Err(anyhow::Error::msg(
             "Referendum not found on OpenSquare by CID. Contact admin.",
