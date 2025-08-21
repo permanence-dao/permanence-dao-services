@@ -10,14 +10,14 @@ license.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true, default-features = true, features = ["serde"] }
-enum-iterator = "2.0"
+enum-iterator = "2.1"
 frame-support = { workspace = true }
 hex = { workspace = true }
-pallet-identity = "40.1"
+pallet-identity = "42.0"
 parity-scale-codec = { workspace = true }
-pallet-balances = "41.1"
+pallet-balances = "43.0"
 pdao-config = { path = "../pdao-config" }
-frame-system = "41.0"
+frame-system = "42.0"
 serde = { workspace = true, features = ["derive"] }
 sp-core = { workspace = true }
 thiserror = { workspace = true }
