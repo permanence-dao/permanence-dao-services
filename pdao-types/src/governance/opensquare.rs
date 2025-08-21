@@ -30,11 +30,13 @@ pub struct OpenSquareSnapshotHeight {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenSquareNetworksConfig {
+    #[serde(rename = "type")]
+    pub ty: String,
     pub symbol: String,
     pub decimals: u8,
     pub networks: Vec<OpenSquareNetwork>,
     pub accessibility: String,
-    pub whitelist: Vec<String>,
+    pub members: Vec<String>,
     pub strategies: Vec<String>,
     pub version: String,
 }
@@ -112,6 +114,7 @@ impl OpenSquareNewProposal {
         Self {
             space: config.referendum_importer.opensquare_space.clone(),
             networks_config: OpenSquareNetworksConfig {
+                ty: "collectives-dao".to_string(),
                 symbol: space_chain.token_ticker.clone(),
                 decimals: space_chain.token_decimals as u8,
                 networks: vec![OpenSquareNetwork {
@@ -123,9 +126,8 @@ impl OpenSquareNewProposal {
                     }],
                 }],
                 accessibility: "whitelist".to_string(),
-                whitelist: vec![
+                members: vec![
                     "1ZSPR3zNg5Po3obkhXTPR95DepNBzBZ3CyomHXGHK9Uvx6w".to_string(),
-                    "1xzcLSwo7xBFkJYZiL4EHaqFpuPTkH641E3V43W4cuk1bX6".to_string(),
                     "12His7t3EJ38tjdBbivUzWQeaNCLKfMqtKp1Ed3xHMyCE9N3".to_string(),
                     "12s6UMSSfE2bNxtYrJc6eeuZ7UxQnRpUzaAh1gPQrGNFnE8h".to_string(),
                     "13EDmaUe89xXocPppFmuoAZaCsckaJy3deAyVyiykk1zKQbF".to_string(),
@@ -134,7 +136,6 @@ impl OpenSquareNewProposal {
                     "15fTH34bbKGMUjF1bLmTqxPYgpg481imThwhWcQfCyktyBzL".to_string(),
                     "167YoKNriVtP4Nxk9F9GRV7HTKu5VnxaRq1pKMANAnmmTY9F".to_string(),
                     "13znFMMjHyM2UvSewvaKMC2bLUcySRMzcM8BAMTzm1G2P5ju".to_string(),
-                    "12KtA8mtfsK1CyQb4utLiwG3ao22z77w2cM2GqnaL2RiDCoJ".to_string(),
                 ],
                 strategies: vec!["one-person-one-vote".to_string()],
                 version: "4".to_string(),
