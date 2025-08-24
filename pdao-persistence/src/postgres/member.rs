@@ -90,7 +90,7 @@ impl PostgreSQLStorage {
             r#"
             SELECT id, name, telegram_username, polkadot_address, polkadot_payment_address, kusama_address, kusama_payment_address, is_on_leave, membership_type_code
             FROM pdao_member
-            WHERE telegram_username = $1
+            WHERE telegram_username = $1 AND is_removed = false
             "#
         )
             .bind(username)
@@ -108,12 +108,13 @@ impl PostgreSQLStorage {
         let on_leave_filter = if include_on_leave {
             ""
         } else {
-            "WHERE is_on_leave = FALSE"
+            "AND is_on_leave = FALSE"
         };
         let db_members: Vec<MemberRow> = sqlx::query_as::<_, MemberRow>(
             format!(r#"
             SELECT id, name, telegram_username, polkadot_address, polkadot_payment_address, kusama_address, kusama_payment_address, is_on_leave, membership_type_code
-            FROM pdao_member {on_leave_filter}
+            FROM pdao_member
+            WHERE is_removed = false {on_leave_filter}
             ORDER BY id ASC
             "#).as_str(),
         )
