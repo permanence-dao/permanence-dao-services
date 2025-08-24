@@ -44,12 +44,17 @@ impl TelegramBot {
         let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
 
         let abstain_threshold =
-            voting_policy.abstain_threshold_percent as u32 * voting_member_count / 100;
+            ((voting_policy.abstain_threshold_percent as u32 * voting_member_count) as f32 / 100.0)
+                .round() as u32;
         let participation_threshold =
-            voting_policy.participation_percent as u32 * voting_member_count / 100;
-        let quorum_threshold = voting_policy.quorum_percent as u32 * voting_member_count / 100;
+            ((voting_policy.participation_percent as u32 * voting_member_count) as f32 / 100.0)
+                .round() as u32;
+        let quorum_threshold = ((voting_policy.quorum_percent as u32 * voting_member_count) as f32
+            / 100.0)
+            .round() as u32;
         let majority_threshold =
-            voting_policy.majority_percent as u32 * (aye_count + nay_count) / 100;
+            ((voting_policy.majority_percent as u32 * voting_member_count) as f32 / 100.0).round()
+                as u32;
 
         if abstain_count > abstain_threshold {
             vote = None;
