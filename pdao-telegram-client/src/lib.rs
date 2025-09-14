@@ -47,7 +47,7 @@ impl TelegramClient {
         new_opensquare_proposal_response: &OpenSquareNewProposalResponse,
     ) -> anyhow::Result<(i32, i32)> {
         log::info!(
-            "Create Telegram topic for {} referendum ${}.",
+            "Create Telegram topic for {} referendum {}.",
             chain.token_ticker,
             referendum.referendum_index
         );
@@ -73,7 +73,7 @@ impl TelegramClient {
                     track.short_name(),
                     chain.token_ticker,
                     referendum.referendum_index,
-                    title,
+                    title.replace("_", "\\_"),
                 ),
                 icon_color: None,
                 icon_custom_emoji_id: ballot_emoji_id.clone(),
