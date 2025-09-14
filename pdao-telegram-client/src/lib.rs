@@ -73,7 +73,7 @@ impl TelegramClient {
                     track.short_name(),
                     chain.token_ticker,
                     referendum.referendum_index,
-                    title.replace("_", "\\_"),
+                    title,
                 ),
                 icon_color: None,
                 icon_custom_emoji_id: ballot_emoji_id.clone(),
@@ -94,7 +94,7 @@ impl TelegramClient {
         );
         let message = if let Some(content_summary) = &referendum.content_summary {
             if let Some(summary) = &content_summary.summary {
-                format!("{message}\n\n**AI Summary:**\n{summary}")
+                format!("{message}\n\n**AI Summary:**\n{}", summary.replace("_", "\\_"))
             } else {
                 message
             }
