@@ -83,7 +83,7 @@ The full discussion can be found in our [internal voting](https://voting.opensqu
 
 Please feel free to contact us through the links below for further discussion.{coi_disclaimer}
 
-Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort IV Delegate<br><br>📅 [Book Office Hours](https://cal.com/permanencedao/office-hours)<br>💬 [Public Telegram](https://t.me/permanencedao)<br>🌐️ [Web](https://permanence.io)<br>🐦 [Twitter](https://twitter.com/permanencedao)<br>🗳️ [Delegate](https://{}.subsquare.io/user/{}/votes)"#,
+Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort V Delegate<br><br>📅 [Book Office Hours](https://cal.com/permanencedao/office-hours)<br>💬 [Public Telegram](https://t.me/permanencedao)<br>🌐️ [Web](https://permanence.io)<br>🐦 [Twitter](https://twitter.com/permanencedao)<br>🗳️ [Delegate](https://{}.subsquare.io/user/{}/votes)"#,
         O32::from1(previous_vote_count + 1),
         if let Some(vote) = vote {
             if vote {
