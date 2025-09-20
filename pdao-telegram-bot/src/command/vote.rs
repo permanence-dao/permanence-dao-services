@@ -44,37 +44,33 @@ impl TelegramBot {
         let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
 
         let abstain_threshold =
-            ((voting_policy.abstain_threshold_percent as u32 * voting_member_count) as f32 / 100.0)
-                .round() as u32;
+            (voting_policy.abstain_threshold_percent as u32 * voting_member_count) as f64 / 100.0;
         let participation_threshold =
-            ((voting_policy.participation_percent as u32 * voting_member_count) as f32 / 100.0)
-                .round() as u32;
-        let quorum_threshold = ((voting_policy.quorum_percent as u32 * voting_member_count) as f32
-            / 100.0)
-            .round() as u32;
+            (voting_policy.participation_percent as u32 * voting_member_count) as f64 / 100.0;
+        let quorum_threshold =
+            (voting_policy.quorum_percent as u32 * voting_member_count) as f64 / 100.0;
         let majority_threshold =
-            ((voting_policy.majority_percent as u32 * (aye_count + nay_count)) as f32 / 100.0)
-                .round() as u32;
+            (voting_policy.majority_percent as u32 * (aye_count + nay_count)) as f64 / 100.0;
 
-        if abstain_count > abstain_threshold {
+        if (abstain_count as f64) > abstain_threshold {
             vote = None;
             message = format!(
                 "{message}\n{abstain_count} members abstained, higher than the {abstain_threshold}-member threshold.\n**Vote #{}: ABSTAIN**",
                 past_votes.len() + 1,
             );
-        } else if participation < participation_threshold {
+        } else if (participation as f64) < participation_threshold {
             vote = None;
             message = format!(
                 "{message}\n{participation_threshold} member required participation not met.\n**Vote #{}: ABSTAIN**",
                 past_votes.len() + 1,
             );
-        } else if aye_count < quorum_threshold {
+        } else if (aye_count as f64) < quorum_threshold {
             vote = Some(false);
             message = format!(
                 "{message}\n{quorum_threshold}-member quorum not met.\n**Vote #{}: NAY**",
                 past_votes.len() + 1,
             );
-        } else if aye_count <= majority_threshold {
+        } else if (aye_count as f64) <= majority_threshold {
             vote = Some(false);
             message = format!(
                 "{message}\nRequired majority (more than {}%) of non-abstain votes not met.\n**Vote #{}: NAY**",

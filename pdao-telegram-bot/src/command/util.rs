@@ -185,3 +185,7 @@ pub(super) async fn require_member(
         )))
     }
 }
+
+pub fn _round_half_down(x: f64) -> f64 {
+    (x - 0.5).ceil()
+}

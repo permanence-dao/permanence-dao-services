@@ -94,7 +94,10 @@ impl TelegramClient {
         );
         let message = if let Some(content_summary) = &referendum.content_summary {
             if let Some(summary) = &content_summary.summary {
-                format!("{message}\n\n**AI Summary:**\n{}", summary.replace("_", "\\_"))
+                format!(
+                    "{message}\n\n**AI Summary:**\n{}",
+                    summary.replace("_", "\\_")
+                )
             } else {
                 message
             }
