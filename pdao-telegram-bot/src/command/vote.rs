@@ -2,7 +2,7 @@ use crate::command::util::{
     get_vote_counts, require_db_referendum, require_db_referendum_is_active,
     require_opensquare_cid, require_opensquare_referendum, require_opensquare_votes,
     require_subsquare_referendum, require_subsquare_referendum_active, require_thread,
-    require_voting_admin, require_voting_policy,
+    require_voting_admin, require_voting_policy, round_half_down,
 };
 use crate::TelegramBot;
 use pdao_types::substrate::chain::Chain;
@@ -55,19 +55,22 @@ impl TelegramBot {
         if (abstain_count as f64) > abstain_threshold {
             vote = None;
             message = format!(
-                "{message}\n{abstain_count} members abstained, higher than the {abstain_threshold}-member threshold.\n**Vote #{}: ABSTAIN**",
+                "{message}\n{abstain_count} members abstained, higher than the {}-member threshold.\n**Vote #{}: ABSTAIN**",
+                round_half_down(abstain_threshold),
                 past_votes.len() + 1,
             );
         } else if (participation as f64) < participation_threshold {
             vote = None;
             message = format!(
-                "{message}\n{participation_threshold} member required participation not met.\n**Vote #{}: ABSTAIN**",
+                "{message}\n{} member required participation not met.\n**Vote #{}: ABSTAIN**",
+                round_half_down(participation_threshold),
                 past_votes.len() + 1,
             );
         } else if (aye_count as f64) < quorum_threshold {
             vote = Some(false);
             message = format!(
-                "{message}\n{quorum_threshold}-member quorum not met.\n**Vote #{}: NAY**",
+                "{message}\n{}-member quorum not met.\n**Vote #{}: NAY**",
+                round_half_down(quorum_threshold),
                 past_votes.len() + 1,
             );
         } else if (aye_count as f64) <= majority_threshold {

@@ -1,7 +1,7 @@
 use crate::command::util::{
     get_vote_counts, require_db_referendum, require_db_referendum_is_active,
     require_opensquare_cid, require_opensquare_referendum, require_opensquare_votes,
-    require_subsquare_referendum, require_thread, require_voting_policy,
+    require_subsquare_referendum, require_thread, require_voting_policy, round_half_down,
 };
 use crate::TelegramBot;
 use pdao_types::governance::ReferendumStatus;
@@ -101,11 +101,17 @@ impl TelegramBot {
             (voting_policy.majority_percent as u32 * (aye_count + nay_count)) as f64 / 100.0;
 
         message = if (abstain_count as f64) > abstain_threshold {
-            format!("{message}\n{abstain_count} members abstained, higher than the {abstain_threshold}-member threshold.\nABSTAIN")
+            format!("{message}\n{abstain_count} members abstained, higher than the {}-member threshold.\nABSTAIN", round_half_down(abstain_threshold))
         } else if (participation as f64) < participation_threshold {
-            format!("{message}\n{participation_threshold}-member required participation not met.\nABSTAIN")
+            format!(
+                "{message}\n{}-member required participation not met.\nABSTAIN",
+                round_half_down(participation_threshold)
+            )
         } else if (aye_count as f64) < quorum_threshold {
-            format!("{message}\n{quorum_threshold}-member quorum not met.\nNAY",)
+            format!(
+                "{message}\n{}-member quorum not met.\nNAY",
+                round_half_down(quorum_threshold)
+            )
         } else if (aye_count as f64) <= majority_threshold {
             format!(
                 "{message}\nRequired majority (more than {}%) of non-abstain votes not met.\nNAY",
