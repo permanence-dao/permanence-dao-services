@@ -433,7 +433,6 @@ impl Service for TelegramBot {
         let polkadot = Chain::polkadot();
         let kusama = Chain::kusama();
         tokio::spawn(async move {
-            let delay_seconds = 60 * 30;
             loop {
                 if let Err(err) = self.import_referenda(&polkadot).await {
                     log::error!("Import Polkadot referenda failed: {err}");
@@ -441,8 +440,9 @@ impl Service for TelegramBot {
                 if let Err(err) = self.import_referenda(&kusama).await {
                     log::error!("Import Kusama referenda failed: {err}");
                 }
-                log::info!("Sleep for {delay_seconds} seconds.");
-                tokio::time::sleep(std::time::Duration::from_secs(delay_seconds)).await;
+                log::info!("Sleep for {} seconds.", CONFIG.voter.sleep_seconds);
+                tokio::time::sleep(std::time::Duration::from_secs(CONFIG.voter.sleep_seconds))
+                    .await;
             }
         });
         loop {
