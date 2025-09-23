@@ -300,7 +300,7 @@ impl TelegramBot {
                     db_referendum.has_coi,
                     Some(&subsquare_referendum.state.status.to_string().to_uppercase()),
                     &format!("V{current_vote_count}"),
-                    db_referendum.status.get_icon(),
+                    "✅",
                 )
                 .await?;
         }
