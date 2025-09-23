@@ -175,10 +175,11 @@ impl TelegramClient {
         status_emoji: &str,
     ) -> anyhow::Result<bool> {
         let stickers = self.telegram_api.get_forum_topic_icon_stickers().await?;
-        let mut checkmark_emoji_id = None;
+        let mut status_emoji_id = None;
         for sticker in stickers.result.iter() {
             if sticker.emoji == Some(status_emoji.to_string()) {
-                checkmark_emoji_id = sticker.custom_emoji_id.clone();
+                status_emoji_id = sticker.custom_emoji_id.clone();
+                break;
             }
         }
 
@@ -186,7 +187,7 @@ impl TelegramClient {
         let params = EditForumTopicParams::builder()
             .chat_id(ChatId::Integer(chat_id))
             .message_thread_id(thread_id)
-            .maybe_icon_custom_emoji_id(checkmark_emoji_id)
+            .maybe_icon_custom_emoji_id(status_emoji_id)
             .name(if let Some(status_text) = maybe_status_text {
                 format!("[{status_text}] [{vote_count_status}] {coi_status}{name}")
             } else {

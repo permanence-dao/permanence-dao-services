@@ -126,6 +126,7 @@ pub(super) fn require_subsquare_referendum_active(
 ) -> anyhow::Result<()> {
     if !(subsquare_referendum.state.status == ReferendumStatus::Deciding
         || subsquare_referendum.state.status == ReferendumStatus::Preparing
+        || subsquare_referendum.state.status == ReferendumStatus::Queueing
         || subsquare_referendum.state.status == ReferendumStatus::Confirming)
     {
         Err(anyhow::Error::msg(
