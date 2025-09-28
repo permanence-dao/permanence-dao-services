@@ -44,6 +44,7 @@ impl TelegramClient {
         chain: &Chain,
         config: &Config,
         referendum: &SubSquareReferendum,
+        preimage_exists: bool,
         new_opensquare_proposal_response: &OpenSquareNewProposalResponse,
     ) -> anyhow::Result<(i32, i32)> {
         log::info!(
@@ -84,13 +85,18 @@ impl TelegramClient {
             chain.chain, referendum.referendum_index,
         );
         let message = format!(
-            "• {} [#{}]({})\n• {}\n• {}\n• Status: {}",
+            "• {} [#{}]({})\n• {}\n• {}\n• Status: {}\n{}",
             chain.display,
             referendum.referendum_index,
             url,
             track.name(),
             title.replace("_", "\\_"),
             referendum.state.status,
+            if preimage_exists {
+                "📝 Preimage exists"
+            } else {
+                "⚪ No preimage"
+            },
         );
         let message = if let Some(content_summary) = &referendum.content_summary {
             if let Some(summary) = &content_summary.summary {
@@ -141,6 +147,7 @@ impl TelegramClient {
                 business_connection_id: None,
                 chat_id: ChatId::Integer(chat_id),
                 message_thread_id: thread_id,
+                direct_messages_topic_id: None,
                 text: html_escape::encode_text(message).to_string(),
                 #[allow(deprecated)]
                 parse_mode: Some(ParseMode::Markdown),
@@ -156,6 +163,7 @@ impl TelegramClient {
                 protect_content: None,
                 allow_paid_broadcast: None,
                 message_effect_id: None,
+                suggested_post_parameters: None,
                 reply_parameters: None,
                 reply_markup: None,
             })

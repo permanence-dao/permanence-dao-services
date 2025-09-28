@@ -55,9 +55,13 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         };
+        let preimage_exists = match self.voter.get_referendum_lookup(&chain, index).await? {
+            Some(lookup) => self.voter.get_preimage(&chain, &lookup).await?.is_some(),
+            None => false,
+        };
         if let Err(error) = self
             .referendum_importer
-            .import_referendum(&chain, index, polkadot_snapshot_height)
+            .import_referendum(&chain, index, polkadot_snapshot_height, preimage_exists)
             .await
         {
             let message = match error {

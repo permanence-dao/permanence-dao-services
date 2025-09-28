@@ -46,6 +46,7 @@ impl ReferendumImporter {
         chain: &Chain,
         index: u32,
         snapshot_height: u64,
+        preimage_exists: bool,
     ) -> Result<Referendum, ReferendumImportError> {
         let snapshot_height = snapshot_height - 50;
         log::info!("Process {} referendum #{}.", chain.token_ticker, index,);
@@ -86,6 +87,7 @@ impl ReferendumImporter {
                 chain,
                 &self.config,
                 &referendum,
+                preimage_exists,
                 &new_opensquare_proposal_response,
             )
             .await
@@ -95,6 +97,7 @@ impl ReferendumImporter {
             .save_referendum(
                 chain.id,
                 &referendum,
+                preimage_exists,
                 &new_opensquare_proposal_response.cid,
                 &new_opensquare_proposal_response.post_uid,
                 self.config.telegram.chat_id,

@@ -12,12 +12,12 @@ anyhow = { workspace = true }
 chrono = { workspace = true, default-features = true, features = ["serde"] }
 enum-iterator = "2.1"
 frame-support = { workspace = true }
+frame-system = { workspace = true }
 hex = { workspace = true }
-pallet-identity = "42.0"
+pallet-balances = { workspace = true }
+pallet-identity = { workspace = true }
 parity-scale-codec = { workspace = true }
-pallet-balances = "43.0"
 pdao-config = { path = "../pdao-config" }
-frame-system = "42.0"
 serde = { workspace = true, features = ["derive"] }
 sp-core = { workspace = true }
 thiserror = { workspace = true }

@@ -40,20 +40,24 @@ impl ReferendumStatus {
         }
     }
 
-    pub fn requires_termination(&self) -> bool {
+    pub fn is_ongoing(&self) -> bool {
         match self {
-            ReferendumStatus::Confirming => false,
-            ReferendumStatus::Deciding => false,
-            ReferendumStatus::Queueing => false,
-            ReferendumStatus::Preparing => false,
-            ReferendumStatus::Submitted => false,
-            ReferendumStatus::Approved => true,
-            ReferendumStatus::Cancelled => true,
-            ReferendumStatus::Killed => true,
-            ReferendumStatus::TimedOut => true,
-            ReferendumStatus::Rejected => true,
-            ReferendumStatus::Executed => true,
+            ReferendumStatus::Confirming => true,
+            ReferendumStatus::Deciding => true,
+            ReferendumStatus::Queueing => true,
+            ReferendumStatus::Preparing => true,
+            ReferendumStatus::Submitted => true,
+            ReferendumStatus::Approved => false,
+            ReferendumStatus::Cancelled => false,
+            ReferendumStatus::Killed => false,
+            ReferendumStatus::TimedOut => false,
+            ReferendumStatus::Rejected => false,
+            ReferendumStatus::Executed => false,
         }
+    }
+
+    pub fn requires_termination(&self) -> bool {
+        !self.is_ongoing()
     }
 }
 
@@ -117,6 +121,7 @@ pub struct Referendum {
     pub is_terminated: bool,
     pub has_coi: bool,
     pub is_archived: bool,
+    pub preimage_exists: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

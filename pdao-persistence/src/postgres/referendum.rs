@@ -24,6 +24,7 @@ struct ReferendumRow {
     pub is_terminated: bool,
     pub has_coi: bool,
     pub is_archived: bool,
+    pub preimage_exists: bool,
 }
 
 fn referendum_row_into_referendum(row: &ReferendumRow) -> anyhow::Result<Referendum> {
@@ -45,6 +46,7 @@ fn referendum_row_into_referendum(row: &ReferendumRow) -> anyhow::Result<Referen
         is_terminated: row.is_terminated,
         has_coi: row.has_coi,
         is_archived: row.is_archived,
+        preimage_exists: row.preimage_exists,
     })
 }
 
@@ -53,6 +55,7 @@ impl PostgreSQLStorage {
         &self,
         network_id: u32,
         referendum: &OpensquareReferendum,
+        preimage_exists: bool,
         opensquare_cid: &str,
         opensquare_post_uid: &str,
         telegram_chat_id: i64,
@@ -60,10 +63,10 @@ impl PostgreSQLStorage {
     ) -> anyhow::Result<i32> {
         let result: (i32,) = sqlx::query_as(
             r#"
-            INSERT INTO pdao_referendum (network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            INSERT INTO pdao_referendum (network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, preimage_exists)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             ON CONFLICT(network_id, index) DO UPDATE
-            SET track_id = EXCLUDED.track_id, title = EXCLUDED.title, content = EXCLUDED.content, content_type = EXCLUDED.content_type, telegram_chat_id = EXCLUDED.telegram_chat_id, telegram_topic_id = EXCLUDED.telegram_topic_id, telegram_intro_message_id = EXCLUDED.telegram_intro_message_id, opensquare_cid = EXCLUDED.opensquare_cid, opensquare_post_uid = EXCLUDED.opensquare_post_uid
+            SET track_id = EXCLUDED.track_id, title = EXCLUDED.title, content = EXCLUDED.content, content_type = EXCLUDED.content_type, telegram_chat_id = EXCLUDED.telegram_chat_id, telegram_topic_id = EXCLUDED.telegram_topic_id, telegram_intro_message_id = EXCLUDED.telegram_intro_message_id, opensquare_cid = EXCLUDED.opensquare_cid, opensquare_post_uid = EXCLUDED.opensquare_post_uid, preimage_exists = EXCLUDED.preimage_exists
             RETURNING id
             "#,
         )
@@ -79,6 +82,7 @@ impl PostgreSQLStorage {
             .bind(new_telegram_topic_response.1)
             .bind(opensquare_cid)
             .bind(opensquare_post_uid)
+            .bind(preimage_exists)
             .fetch_one(&self.connection_pool)
             .await?;
         Ok(result.0)
@@ -91,7 +95,7 @@ impl PostgreSQLStorage {
     ) -> anyhow::Result<Option<Referendum>> {
         let maybe_row: Option<ReferendumRow> = sqlx::query_as::<_, ReferendumRow>(
             r#"
-            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived, preimage_exists
             FROM pdao_referendum
             WHERE network_id = $1 AND index = $2
             "#,
@@ -195,6 +199,25 @@ impl PostgreSQLStorage {
             "#,
         )
         .bind(referendum_status.to_string())
+        .bind(referendum_id as i32)
+        .fetch_optional(&self.connection_pool)
+        .await?;
+        Ok(maybe_result.map(|r| r.0))
+    }
+
+    pub async fn set_referendum_preimage_exists(
+        &self,
+        referendum_id: u32,
+        preimage_exists: bool,
+    ) -> anyhow::Result<Option<i32>> {
+        let maybe_result: Option<(i32,)> = sqlx::query_as(
+            r#"
+            UPDATE pdao_referendum SET preimage_exists = $1
+            WHERE id = $2
+            RETURNING id
+            "#,
+        )
+        .bind(preimage_exists)
         .bind(referendum_id as i32)
         .fetch_optional(&self.connection_pool)
         .await?;

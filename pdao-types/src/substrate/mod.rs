@@ -6,4 +6,5 @@ pub mod block;
 pub mod chain;
 pub mod event;
 pub mod identity;
+pub mod referendum;
 pub mod system;

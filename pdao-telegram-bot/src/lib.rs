@@ -230,6 +230,36 @@ async fn get_polkadot_snapshot_height() -> anyhow::Result<u64> {
 }
 
 impl TelegramBot {
+    async fn update_referendum_preimage_exists(
+        &self,
+        db_referendum: &Referendum,
+        chain: &Chain,
+        preimage_exists: bool,
+    ) -> anyhow::Result<()> {
+        log::info!(
+            "Update {} referendum #{} preimage exists: {} -> {}",
+            chain.display,
+            db_referendum.index,
+            !preimage_exists,
+            preimage_exists,
+        );
+        self.postgres
+            .set_referendum_preimage_exists(db_referendum.id, preimage_exists)
+            .await?;
+        self.telegram_client
+            .send_message(
+                db_referendum.telegram_chat_id,
+                Some(db_referendum.telegram_topic_id),
+                if preimage_exists {
+                    "📝 Preimage uploaded."
+                } else {
+                    "❌ Preimage removed!"
+                },
+            )
+            .await?;
+        Ok(())
+    }
+
     async fn update_referendum_status(
         &self,
         db_referendum: &Referendum,
@@ -321,9 +351,22 @@ impl TelegramBot {
             "DOT" => referendum.state.block.number,
             _ => get_polkadot_snapshot_height().await?,
         };
+        let preimage_exists = match self
+            .voter
+            .get_referendum_lookup(chain, referendum.referendum_index)
+            .await?
+        {
+            Some(lookup) => self.voter.get_preimage(chain, &lookup).await?.is_some(),
+            None => false,
+        };
         match self
             .referendum_importer
-            .import_referendum(chain, referendum.referendum_index, snapshot_height)
+            .import_referendum(
+                chain,
+                referendum.referendum_index,
+                snapshot_height,
+                preimage_exists,
+            )
             .await
         {
             Ok(db_referendum) => {
@@ -387,7 +430,7 @@ impl TelegramBot {
 
     async fn import_referenda(&self, chain: &Chain) -> anyhow::Result<()> {
         let mut imported_referendum_count = 0;
-        for page in 1..=3 {
+        for page in 1..=4 {
             let referenda = self
                 .subsquare_client
                 .fetch_referenda(chain, page, 30)
@@ -398,6 +441,24 @@ impl TelegramBot {
                     .get_referendum_by_index(chain.id, subsquare_referendum.referendum_index)
                     .await?;
                 if let Some(db_referendum) = maybe_db_referendum.as_ref() {
+                    let preimage_exists = match self
+                        .voter
+                        .get_referendum_lookup(chain, db_referendum.index)
+                        .await?
+                    {
+                        Some(lookup) => self.voter.get_preimage(chain, &lookup).await?.is_some(),
+                        None => false,
+                    };
+                    if subsquare_referendum.state.status.is_ongoing()
+                        && db_referendum.preimage_exists != preimage_exists
+                    {
+                        self.update_referendum_preimage_exists(
+                            db_referendum,
+                            chain,
+                            preimage_exists,
+                        )
+                        .await?;
+                    }
                     if db_referendum.status != subsquare_referendum.state.status
                         && !db_referendum.is_archived
                     {
