@@ -66,16 +66,6 @@ impl TelegramBot {
         };
 
         let mut message = format!("{}", subsquare_referendum.state.status);
-        if subsquare_referendum.state.status.is_ongoing() {
-            message = format!(
-                "{message}\n{}",
-                if db_referendum.preimage_exists {
-                    "📝 Preimage exists"
-                } else {
-                    "⚪ No preimage"
-                }
-            )
-        }
         if let Some(blocks_left) = maybe_blocks_left {
             let seconds_left = blocks_left * chain.block_time_seconds as u64;
             let mut counted_seconds = 0;
@@ -96,6 +86,16 @@ impl TelegramBot {
             }
             let time_left = components.join(" ");
             message = format!("{message}: {time_left} left");
+        }
+        if subsquare_referendum.state.status.is_ongoing() {
+            message = format!(
+                "{message}\n{}",
+                if db_referendum.preimage_exists {
+                    "📝 Preimage exists"
+                } else {
+                    "⚪ No preimage"
+                }
+            )
         }
         message = format!("{message}\n{voting_member_count} available members.");
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
