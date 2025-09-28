@@ -118,7 +118,7 @@ impl PostgreSQLStorage {
     ) -> anyhow::Result<Option<Referendum>> {
         let maybe_row: Option<ReferendumRow> = sqlx::query_as::<_, ReferendumRow>(
             r#"
-            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived, preimage_exists
             FROM pdao_referendum
             WHERE telegram_chat_id = $1 AND telegram_topic_id = $2
             "#,
