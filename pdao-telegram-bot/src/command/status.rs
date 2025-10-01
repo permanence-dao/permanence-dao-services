@@ -133,7 +133,7 @@ impl TelegramBot {
                 majority_threshold,
                 ..
             } => format!(
-                "{} ayes & abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n⚪ ABSTAIN",
+                "{} ayes and abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n⚪ ABSTAIN",
                 aye_count + abstain_count,
                 voting_policy.majority_percent,
                 db_referendum.track.name(),
