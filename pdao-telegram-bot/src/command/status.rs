@@ -136,7 +136,12 @@ impl TelegramBot {
             } => format!(
                 "{}{} ayes and abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n⚪ ABSTAIN",
                 if quorum_threshold > 0.0 {
-                    &format!("Quorum of {:.1} members out of {} voters not met.\n", quorum_threshold, voting_member_count)
+                    &format!(
+                        "{}% aye-quorum of at least {:.1} members out of {} voters not met.\n",
+                        voting_policy.quorum_percent,
+                        quorum_threshold,
+                        voting_member_count,
+                    )
                 } else {
                     ""
                 },
@@ -155,7 +160,8 @@ impl TelegramBot {
                 ..
             } => if quorum_threshold > 0.0 {
                 format!(
-                    "Quorum of {:.1} members out of {} voters satisfied for the {} track.\n🟢 AYE",
+                    "{:.1}% aye-quorum of at least {:.1} members out of {} voters satisfied for the {} track.\n🟢 AYE",
+                    voting_policy.quorum_percent,
                     quorum_threshold,
                     voting_member_count,
                     db_referendum.track.name(),
