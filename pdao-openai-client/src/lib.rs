@@ -1,5 +1,6 @@
 use pdao_config::{Config, OpenAPIConfig};
 use pdao_types::governance::opensquare::{OpenSquareReferendumVote, OpenSquareVote};
+use pdao_types::governance::policy::VotingPolicyEvaluation;
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::openai::{
     OpenAICompletionRequest, OpenAICompletionResponse, OpenAIMessage, OpenAIModel, OpenAIRole,
@@ -85,7 +86,7 @@ impl OpenAIClient {
         &self,
         chain: &Chain,
         sub_square_referendum: &SubSquareReferendum,
-        vote: Option<bool>,
+        vote: VotingPolicyEvaluation,
         votes: &[OpenSquareReferendumVote],
     ) -> anyhow::Result<String> {
         let mut prompt_parts: Vec<String> = Vec::new();
@@ -101,14 +102,14 @@ impl OpenAIClient {
         );
         let json = serde_json::to_string(&sub_square_referendum)?;
         prompt_parts.push(serde_json::to_string(&json)?);
-        let vote = if let Some(vote) = vote {
-            if vote {
-                "AYE"
-            } else {
-                "NAY"
-            }
-        } else {
-            "ABSTAIN"
+        let vote = match vote {
+            VotingPolicyEvaluation::AbstainThresholdNotMet { .. } => "ABSTAIN",
+            VotingPolicyEvaluation::ParticipationNotMet { .. } => "NO VOTE",
+            VotingPolicyEvaluation::AyeAbstainMajorityAbstain { .. } => "ABSTAIN",
+            VotingPolicyEvaluation::MajorityAbstain { .. } => "ABSTAIN",
+            VotingPolicyEvaluation::AyeEqualsNayAbstain { .. } => "ABSTAIN",
+            VotingPolicyEvaluation::Aye { .. } => "AYE",
+            VotingPolicyEvaluation::Nay { .. } => "NAY",
         };
         prompt_parts.push(format!(
             "The vote of the DAO on this referendum determined by its voting policy that applies to this referendum is {vote}.",

@@ -5,9 +5,7 @@ use pdao_subsquare_client::SubSquareClient;
 use pdao_types::governance::opensquare::{
     OpenSquareReferendum, OpenSquareReferendumVote, OpenSquareVote,
 };
-use pdao_types::governance::policy::VotingPolicy;
 use pdao_types::governance::subsquare::SubSquareReferendum;
-use pdao_types::governance::track::Track;
 use pdao_types::governance::{Referendum, ReferendumStatus};
 use pdao_types::substrate::account_id::AccountId;
 use pdao_types::substrate::chain::Chain;
@@ -153,17 +151,6 @@ pub(super) fn get_vote_counts(votes: &[OpenSquareReferendumVote]) -> (u32, u32, 
     (aye_count, nay_count, abstain_count)
 }
 
-pub(super) fn require_voting_policy(track: &Track) -> anyhow::Result<VotingPolicy> {
-    if let Some(voting_policy) = VotingPolicy::voting_policy_for_track(track) {
-        Ok(voting_policy)
-    } else {
-        Err(anyhow::Error::msg(format!(
-            "No voting policy is defined for {}.",
-            track.name(),
-        )))
-    }
-}
-
 pub(super) fn require_voting_admin(username: &str) -> anyhow::Result<()> {
     if !CONFIG.voter.voting_admin_usernames.contains(username) {
         Err(anyhow::Error::msg(
@@ -185,8 +172,4 @@ pub(super) async fn require_member(
             "@{username} is not registered as a member."
         )))
     }
-}
-
-pub fn round_half_down(x: f64) -> f64 {
-    (x - 0.5).ceil()
 }

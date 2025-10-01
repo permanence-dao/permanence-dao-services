@@ -2,9 +2,10 @@ use crate::command::util::{
     get_vote_counts, require_db_referendum, require_db_referendum_is_active,
     require_opensquare_cid, require_opensquare_referendum, require_opensquare_votes,
     require_subsquare_referendum, require_subsquare_referendum_active, require_thread,
-    require_voting_admin, require_voting_policy, round_half_down,
+    require_voting_admin,
 };
 use crate::TelegramBot;
+use pdao_types::governance::policy::{VotingPolicy, VotingPolicyEvaluation};
 use pdao_types::substrate::chain::Chain;
 
 impl TelegramBot {
@@ -36,54 +37,85 @@ impl TelegramBot {
         let opensquare_votes =
             require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
                 .await?;
-        let voting_policy = require_voting_policy(&db_referendum.track)?;
+        let voting_policy = VotingPolicy::voting_policy_for_track(&db_referendum.track);
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
-        let participation = aye_count + nay_count + abstain_count;
         let past_votes = self.postgres.get_referendum_votes(db_referendum.id).await?;
-        let vote: Option<bool>;
-        let mut message = format!("🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
-
-        let abstain_threshold =
-            (voting_policy.abstain_threshold_percent as u32 * voting_member_count) as f64 / 100.0;
-        let participation_threshold =
-            (voting_policy.participation_percent as u32 * voting_member_count) as f64 / 100.0;
-        let quorum_threshold =
-            (voting_policy.quorum_percent as u32 * voting_member_count) as f64 / 100.0;
-        let majority_threshold =
-            (voting_policy.majority_percent as u32 * (aye_count + nay_count)) as f64 / 100.0;
-
-        if (abstain_count as f64) > abstain_threshold {
-            vote = None;
-            message = format!(
-                "{message}\n{abstain_count} members abstained, higher than the {}-member threshold.\n**Vote #{}: ABSTAIN**",
-                round_half_down(abstain_threshold),
+        let vote = voting_policy.evaluate(voting_member_count, aye_count, nay_count, abstain_count);
+        let mut message = format!("{voting_member_count} available members.");
+        message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
+        let evaluation = match vote {
+            VotingPolicyEvaluation::AbstainThresholdNotMet {
+                abstain_threshold, ..
+            } => format!(
+                "{} is abstain before a total of {} votes.\n**Vote #{}: ⚪ ABSTAIN",
+                db_referendum.track.name(),
+                abstain_threshold,
                 past_votes.len() + 1,
-            );
-        } else if (participation as f64) < participation_threshold {
-            vote = None;
-            message = format!(
-                "{message}\n{} member required participation not met.\n**Vote #{}: ABSTAIN**",
-                round_half_down(participation_threshold),
+            ),
+            VotingPolicyEvaluation::ParticipationNotMet {
+                participation_threshold,
+                ..
+            } => {
+                message = format!(
+                    "{message}\n{} is no vote before a total of {} votes.\n➖ NO VOTE",
+                    db_referendum.track.name(),
+                    participation_threshold,
+                );
+                self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        &message,
+                    )
+                    .await?;
+                return Ok(());
+            },
+            VotingPolicyEvaluation::MajorityAbstain {
+                abstain_count,
+                majority_threshold,
+                ..
+            } => format!(
+                "{} abstains, more than the abstain threshold of {} votes.\n**Vote #{}: ⚪ ABSTAIN",
+                abstain_count,
+                majority_threshold,
                 past_votes.len() + 1,
-            );
-        } else if (aye_count as f64) < quorum_threshold {
-            vote = Some(false);
-            message = format!(
-                "{message}\n{}-member quorum not met.\n**Vote #{}: NAY**",
-                round_half_down(quorum_threshold),
-                past_votes.len() + 1,
-            );
-        } else if (aye_count as f64) <= majority_threshold {
-            vote = Some(false);
-            message = format!(
-                "{message}\nRequired majority (more than {}%) of non-abstain votes not met.\n**Vote #{}: NAY**",
+            ),
+            VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
+                aye_count,
+                abstain_count,
+                majority_threshold,
+                ..
+            } => format!(
+                "{} ayes & abstains, more than the {:.2}% majority threshold of {} votes.\n**Vote #{}: ⚪ ABSTAIN",
+                aye_count + abstain_count,
                 voting_policy.majority_percent,
+                majority_threshold,
                 past_votes.len() + 1,
-            );
-        } else {
-            vote = Some(true);
-            message = format!("{message}\n**Vote #{}: AYE**", past_votes.len() + 1,)
+            ),
+            VotingPolicyEvaluation::AyeEqualsNayAbstain { .. } => format!(
+                "Ayes are equal to nays with no abstains.\n**Vote #{}: ⚪ ABSTAIN",
+                past_votes.len() + 1,
+            ),
+            VotingPolicyEvaluation::Aye {
+                majority_threshold, ..
+            } => format!(
+                "{} ayes greater than the {:.2}% majority threshold ({} votes) for {}.\n**Vote #{}: 🟢 AYE",
+                aye_count,
+                voting_policy.majority_percent,
+                majority_threshold,
+                db_referendum.track.name(),
+                past_votes.len() + 1,
+            ),
+            VotingPolicyEvaluation::Nay {
+                ..
+            } => format!(
+                "{} aye or abstain requirements not met.\n**Vote #{}: 🔴 NAY",
+                db_referendum.track.name(),
+                past_votes.len() + 1,
+            ),
         };
+        message = format!("{message}\n{evaluation}");
+
         self.telegram_client
             .send_message(
                 chat_id,
@@ -106,7 +138,7 @@ impl TelegramBot {
                 &chain,
                 db_referendum.index,
                 db_referendum.has_coi,
-                vote,
+                vote.simplify()?,
                 balance,
                 conviction,
             )
@@ -132,9 +164,8 @@ impl TelegramBot {
                         &db_referendum.track,
                         &voting_policy,
                         past_votes.len() as u32,
-                        (aye_count, nay_count, abstain_count),
                         voting_member_count,
-                        vote,
+                        &vote,
                         db_referendum.has_coi,
                         &feedback,
                     )
@@ -150,9 +181,8 @@ impl TelegramBot {
                         &db_referendum.track,
                         &voting_policy,
                         past_votes.len() as u32,
-                        (aye_count, nay_count, abstain_count),
                         voting_member_count,
-                        vote,
+                        &vote,
                         db_referendum.has_coi,
                         &feedback,
                     )
@@ -174,7 +204,7 @@ impl TelegramBot {
                 &block_hash,
                 block_number,
                 extrinsic_index,
-                vote,
+                vote.simplify()?,
                 balance,
                 conviction,
                 subsquare_cid.as_deref(),

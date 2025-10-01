@@ -1,9 +1,9 @@
 use crate::command::util::{
     get_vote_counts, require_db_referendum, require_db_referendum_is_active,
     require_opensquare_cid, require_opensquare_votes, require_subsquare_referendum, require_thread,
-    require_voting_policy,
 };
 use crate::TelegramBot;
+use pdao_types::governance::policy::{VotingPolicy, VotingPolicyEvaluation};
 use pdao_types::substrate::chain::Chain;
 
 impl TelegramBot {
@@ -29,31 +29,50 @@ impl TelegramBot {
         let opensquare_votes =
             require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
                 .await?;
-        if opensquare_votes.len() < 2 {
+        if opensquare_votes.is_empty() {
             self.telegram_client
-                .send_message(chat_id, Some(thread_id), "There are less than 2 votes.")
+                .send_message(chat_id, Some(thread_id), "No votes yet.")
                 .await?;
             return Ok(());
         }
-
-        let voting_policy = require_voting_policy(&db_referendum.track)?;
+        let comments_length = opensquare_votes
+            .iter()
+            .map(|vote| vote.remark.len())
+            .sum::<usize>();
+        if comments_length == 0 {
+            self.telegram_client
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    &format!(
+                        "{} votes cast, but no feedback left yet.",
+                        opensquare_votes.len(),
+                    ),
+                )
+                .await?;
+            return Ok(());
+        }
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
-        let participation = aye_count + nay_count + abstain_count;
-        let abstain_threshold =
-            voting_policy.abstain_threshold_percent as u32 * voting_member_count / 100;
-        let participation_threshold =
-            voting_policy.participation_percent as u32 * voting_member_count / 100;
-        let quorum_threshold = voting_policy.quorum_percent as u32 * voting_member_count / 100;
-        let majority_threshold =
-            voting_policy.majority_percent as u32 * (aye_count + nay_count) / 100;
-
-        let vote = if abstain_count > abstain_threshold || participation < participation_threshold {
-            None
-        } else if aye_count < quorum_threshold || aye_count <= majority_threshold {
-            Some(false)
-        } else {
-            Some(true)
-        };
+        let voting_policy = VotingPolicy::voting_policy_for_track(&db_referendum.track);
+        let vote = voting_policy.evaluate(voting_member_count, aye_count, nay_count, abstain_count);
+        if let VotingPolicyEvaluation::ParticipationNotMet {
+            participation_threshold,
+            ..
+        } = vote
+        {
+            self.telegram_client
+                    .send_message(
+                        chat_id,
+                        Some(thread_id),
+                        &format!(
+                            "Required participation of at least {} votes for {} not met yet. No vote, no feedback.",
+                            participation_threshold,
+                            db_referendum.track.name(),
+                        ),
+                    )
+                    .await?;
+            return Ok(());
+        }
 
         let summary = self
             .openai_client

@@ -1,9 +1,10 @@
 use crate::command::util::{
     get_vote_counts, require_db_referendum, require_db_referendum_is_active,
     require_opensquare_cid, require_opensquare_referendum, require_opensquare_votes,
-    require_subsquare_referendum, require_thread, require_voting_policy, round_half_down,
+    require_subsquare_referendum, require_thread,
 };
 use crate::TelegramBot;
+use pdao_types::governance::policy::{VotingPolicy, VotingPolicyEvaluation};
 use pdao_types::governance::ReferendumStatus;
 use pdao_types::substrate::chain::Chain;
 
@@ -32,7 +33,7 @@ impl TelegramBot {
             require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
                 .await?;
 
-        let voting_policy = require_voting_policy(&db_referendum.track)?;
+        let voting_policy = VotingPolicy::voting_policy_for_track(&db_referendum.track);
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
         let block_number = subsquare_referendum.state.block.number;
         let maybe_blocks_left = match subsquare_referendum.state.status {
@@ -99,37 +100,66 @@ impl TelegramBot {
         }
         message = format!("{message}\n{voting_member_count} available members.");
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
-        let participation = aye_count + nay_count + abstain_count;
 
-        let abstain_threshold =
-            (voting_policy.abstain_threshold_percent as u32 * voting_member_count) as f64 / 100.0;
-        let participation_threshold =
-            (voting_policy.participation_percent as u32 * voting_member_count) as f64 / 100.0;
-        let quorum_threshold =
-            (voting_policy.quorum_percent as u32 * voting_member_count) as f64 / 100.0;
-        let majority_threshold =
-            (voting_policy.majority_percent as u32 * (aye_count + nay_count)) as f64 / 100.0;
-
-        message = if (abstain_count as f64) > abstain_threshold {
-            format!("{message}\n{abstain_count} members abstained, higher than the {}-member threshold.\nABSTAIN", round_half_down(abstain_threshold))
-        } else if (participation as f64) < participation_threshold {
-            format!(
-                "{message}\n{}-member required participation not met.\nABSTAIN",
-                round_half_down(participation_threshold)
-            )
-        } else if (aye_count as f64) < quorum_threshold {
-            format!(
-                "{message}\n{}-member quorum not met.\nNAY",
-                round_half_down(quorum_threshold)
-            )
-        } else if (aye_count as f64) <= majority_threshold {
-            format!(
-                "{message}\nRequired majority (more than {}%) of non-abstain votes not met.\nNAY",
+        let vote = voting_policy.evaluate(voting_member_count, aye_count, nay_count, abstain_count);
+        let evaluation = match vote {
+            VotingPolicyEvaluation::AbstainThresholdNotMet {
+                abstain_threshold, ..
+            } => format!(
+                "{} is abstain before a total of {} votes.\n⚪ ABSTAIN",
+                db_referendum.track.name(),
+                abstain_threshold,
+            ),
+            VotingPolicyEvaluation::ParticipationNotMet {
+                participation_threshold,
+                ..
+            } => format!(
+                "{} is no vote before a total of {} votes.\n➖ NO VOTE",
+                db_referendum.track.name(),
+                participation_threshold,
+            ),
+            VotingPolicyEvaluation::MajorityAbstain {
+                abstain_count,
+                majority_threshold,
+                ..
+            } => format!(
+                "{} abstains, more than the abstain threshold of {} votes.\n⚪ ABSTAIN",
+                abstain_count,
+                majority_threshold,
+            ),
+            VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
+                aye_count,
+                abstain_count,
+                majority_threshold,
+                ..
+            } => format!(
+                "{} ayes & abstains, more than the {:.1}% majority threshold of {} votes.\n⚪ ABSTAIN",
+                aye_count + abstain_count,
                 voting_policy.majority_percent,
-            )
-        } else {
-            format!("{message}\nAYE")
+                majority_threshold,
+            ),
+            VotingPolicyEvaluation::AyeEqualsNayAbstain { .. } => {
+                "Ayes are equal to nays with no abstains.\n⚪ ABSTAIN".to_string()
+            }
+            VotingPolicyEvaluation::Aye {
+                aye_count,
+                majority_threshold, ..
+            } => format!(
+                "{} ayes greater than the {:.1}% majority threshold ({} votes) for {}.\n🟢 AYE",
+                aye_count,
+                voting_policy.majority_percent,
+                majority_threshold,
+                db_referendum.track.name(),
+            ),
+            VotingPolicyEvaluation::Nay {
+                ..
+            } => format!(
+                "{} aye or abstain requirements not met.\n🔴 NAY",
+                db_referendum.track.name(),
+            ),
         };
+        message = format!("{message}\n{evaluation}");
+
         if opensquare_referendum.status.to_lowercase() != "active" {
             message = format!("{message}\nMirror referendum has been terminated.");
         }

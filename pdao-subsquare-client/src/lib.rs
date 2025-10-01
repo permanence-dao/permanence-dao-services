@@ -2,7 +2,7 @@ use chrono::Utc;
 use num2words::{Lang, Num2Words};
 use num_ordinal::{Ordinal, O32};
 use pdao_config::Config;
-use pdao_types::governance::policy::VotingPolicy;
+use pdao_types::governance::policy::{VotingPolicy, VotingPolicyEvaluation};
 use pdao_types::governance::subsquare::{
     SubSquareCommentData, SubSquareCommentIndexerData, SubSquareCommentReplyData,
     SubSquareCommentReplyRequest, SubSquareCommentRequest, SubSquareCommentResponse,
@@ -21,14 +21,12 @@ fn get_vote_content(
     track: &Track,
     policy: &VotingPolicy,
     previous_vote_count: u32,
-    vote_distribution: (u32, u32, u32),
     member_count: u32,
-    vote: Option<bool>,
+    vote: &VotingPolicyEvaluation,
     has_coi: bool,
     feedback_summary: &str,
     delegation_address: &str,
-) -> String {
-    let quorum_threshold = policy.quorum_percent as u32 * member_count / 100;
+) -> anyhow::Result<String> {
     let policy_summary = match track {
         Track::Root
         | Track::WhitelistedCaller
@@ -36,31 +34,31 @@ fn get_vote_content(
         | Track::Treasurer
         | Track::FellowshipAdmin
         | Track::BigSpender
+        | Track::MediumSpender
         | Track::StakingAdmin
         | Track::LeaseAdmin
         | Track::GeneralAdmin
         | Track::AuctionAdmin
         | Track::ReferendumCanceller
-        | Track::ReferendumKiller => format!("{}% quorum", policy.quorum_percent),
+        | Track::ReferendumKiller => format!("requires more than {:.1}% of non-abstain votes", policy.majority_percent),
         Track::SmallTipper | Track::BigTipper | Track::SmallSpender => format!(
-            "{}% participation and simple majority of non-abstain votes",
-            policy.participation_percent
+            "is abstain before {:.1}% participation, and requires more than {:.1}% of non-abstain votes after the participation requirement",
+            policy.abstain_before_percent,
+            policy.majority_percent,
         ),
-        Track::MediumSpender => {
-            format!(
-                "{}% quorum (at least {quorum_threshold} aye votes) and simple majority of non-abstain votes",
-                policy.quorum_percent
-            )
-        }
     };
-    let abstain_summary = if vote_distribution.2 > 0 {
+    let abstain_summary = if vote.get_abstain_count() > 0 {
         format!(
             ", with **{} member{} abstaining**",
-            Num2Words::new(vote_distribution.2)
+            Num2Words::new(vote.get_abstain_count())
                 .lang(Lang::English)
                 .to_words()
                 .unwrap(),
-            if vote_distribution.2 > 1 { "s" } else { "" }
+            if vote.get_abstain_count() > 1 {
+                "s"
+            } else {
+                ""
+            }
         )
     } else {
         "".to_string()
@@ -75,7 +73,7 @@ fn get_vote_content(
 
 Thank you for your proposal. Our **{}** vote on this proposal is **{}**.
 
-The **{}** track requires **{policy_summary}** according to our [voting policy {}](https://docs.permanence.io/voting_policy/voting_policy_{}.html), and any referendum in which the **majority of members vote abstain receives an abstain vote**. This proposal has received **{} aye and {} nay** votes from **{} available members**{abstain_summary}. Below is a summary of our members' comments:
+The **{}** track **{policy_summary}** according to our [voting policy {}](https://docs.permanence.io/voting_policy/voting_policy_{}.html), and any referendum in which the **simple majority of voters abstain, or track-specific majority of voters aye or abstain, receives an abstain vote**. This proposal has received **{} aye and {} nay** votes from **{} available members**{abstain_summary}. Below is a summary of our members' comments:
 
 > {feedback_summary}
 
@@ -85,7 +83,7 @@ Please feel free to contact us through the links below for further discussion.{c
 
 Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort V Delegate<br><br>📅 [Book Office Hours](https://cal.com/permanencedao/office-hours)<br>💬 [Public Telegram](https://t.me/permanencedao)<br>🌐️ [Web](https://permanence.io)<br>🐦 [Twitter](https://twitter.com/permanencedao)<br>🗳️ [Delegate](https://{}.subsquare.io/user/{}/votes)"#,
         O32::from1(previous_vote_count + 1),
-        if let Some(vote) = vote {
+        if let Some(vote) = vote.simplify()? {
             if vote {
                 "AYE"
             } else {
@@ -97,11 +95,11 @@ Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort V Delegate<br><br
         track.name(),
         voting_policy_version,
         voting_policy_version,
-        Num2Words::new(vote_distribution.0)
+        Num2Words::new(vote.get_aye_count())
             .lang(Lang::English)
             .to_words()
             .unwrap(),
-        Num2Words::new(vote_distribution.1)
+        Num2Words::new(vote.get_nay_count())
             .lang(Lang::English)
             .to_words()
             .unwrap(),
@@ -112,7 +110,7 @@ Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort V Delegate<br><br
         chain.chain,
         delegation_address,
     );
-    content
+    Ok(content)
 }
 
 pub struct SubSquareClient {
@@ -191,9 +189,8 @@ impl SubSquareClient {
         track: &Track,
         policy: &VotingPolicy,
         previous_vote_count: u32,
-        vote_distribution: (u32, u32, u32),
         member_count: u32,
-        vote: Option<bool>,
+        vote: &VotingPolicyEvaluation,
         has_coi: bool,
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {
@@ -212,13 +209,12 @@ impl SubSquareClient {
             track,
             policy,
             previous_vote_count,
-            vote_distribution,
             member_count,
             vote,
             has_coi,
             feedback_summary,
             delegation_address,
-        );
+        )?;
         let request_data = SubSquareCommentData {
             action: "comment".to_string(),
             indexer: SubSquareCommentIndexerData {
@@ -282,9 +278,8 @@ impl SubSquareClient {
         track: &Track,
         policy: &VotingPolicy,
         previous_vote_count: u32,
-        vote_distribution: (u32, u32, u32),
         member_count: u32,
-        vote: Option<bool>,
+        vote: &VotingPolicyEvaluation,
         has_coi: bool,
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {
@@ -303,13 +298,12 @@ impl SubSquareClient {
             track,
             policy,
             previous_vote_count,
-            vote_distribution,
             member_count,
             vote,
             has_coi,
             feedback_summary,
             delegation_address,
-        );
+        )?;
         let request_data = SubSquareCommentReplyData {
             action: "comment".to_string(),
             comment_cid: comment_cid.to_string(),
