@@ -84,9 +84,15 @@ impl TelegramBot {
                 aye_count,
                 abstain_count,
                 majority_threshold,
+                quorum_threshold,
                 ..
             } => format!(
-                "{} ayes and abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n**Vote #{}: ⚪ ABSTAIN",
+                "{}{} ayes and abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n**Vote #{}: ⚪ ABSTAIN",
+                if quorum_threshold > 0.0 {
+                    &format!("Quorum of {:.1} members out of {} voters not met.\n", quorum_threshold, voting_member_count)
+                } else {
+                    ""
+                },
                 aye_count + abstain_count,
                 voting_policy.majority_percent,
                 db_referendum.track.name(),
@@ -98,20 +104,38 @@ impl TelegramBot {
                 past_votes.len() + 1,
             ),
             VotingPolicyEvaluation::Aye {
-                majority_threshold, ..
-            } => format!(
-                "{} ayes greater than the {:.1}% majority threshold ({:.1} votes) for the {} track.\n**Vote #{}: 🟢 AYE",
-                aye_count,
-                voting_policy.majority_percent,
                 majority_threshold,
-                db_referendum.track.name(),
-                past_votes.len() + 1,
-            ),
+                quorum_threshold,
+                ..
+            } => if quorum_threshold > 0.0 {
+                format!(
+                    "Quorum of {:.1} members out of {} voters satisfied for the {} track.\n**Vote #{}: 🟢 AYE",
+                    quorum_threshold,
+                    voting_member_count,
+                    db_referendum.track.name(),
+                    past_votes.len() + 1,
+                )
+            } else {
+                format!(
+                    "{} ayes, greater than the {:.1}% majority threshold ({:.1} votes) for the {} track.\n**Vote #{}: 🟢 AYE",
+                    aye_count,
+                    voting_policy.majority_percent,
+                    majority_threshold,
+                    db_referendum.track.name(),
+                    past_votes.len() + 1,
+                )
+            },
             VotingPolicyEvaluation::Nay {
+                quorum_threshold,
                 ..
             } => format!(
-                "{} aye or abstain requirements not met.\n**Vote #{}: 🔴 NAY",
+                "{} {}aye or abstain requirements not met.\n**Vote #{}: 🔴 NAY",
                 db_referendum.track.name(),
+                if quorum_threshold > 0.0 {
+                    "quorum, "
+                } else {
+                    ""
+                },
                 past_votes.len() + 1,
             ),
         };
