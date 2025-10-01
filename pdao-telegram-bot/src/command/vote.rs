@@ -47,7 +47,7 @@ impl TelegramBot {
             VotingPolicyEvaluation::AbstainThresholdNotMet {
                 abstain_threshold, ..
             } => format!(
-                "{} is abstain before a total of {} votes.\n**Vote #{}: ⚪ ABSTAIN",
+                "{} is abstain before a total of {:.1} votes.\n**Vote #{}: ⚪ ABSTAIN",
                 db_referendum.track.name(),
                 abstain_threshold,
                 past_votes.len() + 1,
@@ -57,7 +57,7 @@ impl TelegramBot {
                 ..
             } => {
                 message = format!(
-                    "{} is no vote before a total of {} votes.\n➖ NO VOTE",
+                    "{} is no vote before a total of {:.1} votes.\n➖ NO VOTE",
                     db_referendum.track.name(),
                     participation_threshold,
                 );
@@ -75,7 +75,7 @@ impl TelegramBot {
                 majority_threshold,
                 ..
             } => format!(
-                "{} abstains, more than the simple majority abstain threshold of {} votes.\n**Vote #{}: ⚪ ABSTAIN",
+                "{} abstains, more than the simple majority abstain threshold of {:.1} votes.\n**Vote #{}: ⚪ ABSTAIN",
                 abstain_count,
                 majority_threshold,
                 past_votes.len() + 1,
@@ -86,7 +86,7 @@ impl TelegramBot {
                 majority_threshold,
                 ..
             } => format!(
-                "{} ayes & abstains, more than the {:.1}% majority threshold for {} ({} votes).\n**Vote #{}: ⚪ ABSTAIN",
+                "{} ayes & abstains, more than the {:.1}% majority threshold for {} ({:.1} votes).\n**Vote #{}: ⚪ ABSTAIN",
                 aye_count + abstain_count,
                 voting_policy.majority_percent,
                 db_referendum.track.name(),
@@ -100,7 +100,7 @@ impl TelegramBot {
             VotingPolicyEvaluation::Aye {
                 majority_threshold, ..
             } => format!(
-                "{} ayes greater than the {:.1}% majority threshold ({} votes) for {}.\n**Vote #{}: 🟢 AYE",
+                "{} ayes greater than the {:.1}% majority threshold ({:.1} votes) for {}.\n**Vote #{}: 🟢 AYE",
                 aye_count,
                 voting_policy.majority_percent,
                 majority_threshold,
