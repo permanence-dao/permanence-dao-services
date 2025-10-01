@@ -74,9 +74,9 @@ impl PostgreSQLStorage {
             .bind(referendum.track_id as i32)
             .bind(referendum.referendum_index as i32)
             .bind(referendum.state.status.to_string())
-            .bind(referendum.title.clone())
-            .bind(referendum.content.clone())
-            .bind(referendum.content_type.clone())
+            .bind(&referendum.title)
+            .bind(&referendum.content)
+            .bind(&referendum.content_type)
             .bind(telegram_chat_id)
             .bind(new_telegram_topic_response.0)
             .bind(new_telegram_topic_response.1)
@@ -199,6 +199,25 @@ impl PostgreSQLStorage {
             "#,
         )
         .bind(referendum_status.to_string())
+        .bind(referendum_id as i32)
+        .fetch_optional(&self.connection_pool)
+        .await?;
+        Ok(maybe_result.map(|r| r.0))
+    }
+
+    pub async fn update_referendum_title(
+        &self,
+        referendum_id: u32,
+        title: &Option<String>,
+    ) -> anyhow::Result<Option<i32>> {
+        let maybe_result: Option<(i32,)> = sqlx::query_as(
+            r#"
+            UPDATE pdao_referendum SET title = $1
+            WHERE id = $2
+            RETURNING id
+            "#,
+        )
+        .bind(title)
         .bind(referendum_id as i32)
         .fetch_optional(&self.connection_pool)
         .await?;

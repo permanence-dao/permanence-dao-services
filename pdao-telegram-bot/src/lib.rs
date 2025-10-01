@@ -260,6 +260,36 @@ impl TelegramBot {
         Ok(())
     }
 
+    async fn update_referendum_title(
+        &self,
+        db_referendum: &Referendum,
+        chain: &Chain,
+        title: &Option<String>,
+    ) -> anyhow::Result<()> {
+        log::info!(
+            "Update {} referendum #{} title: {:?} -> {title:?}",
+            chain.display,
+            db_referendum.index,
+            db_referendum.title,
+        );
+        self.postgres
+            .update_referendum_title(db_referendum.id, title)
+            .await?;
+        let message = if let Some(title) = title {
+            format!("⚠️ Referendum title has changed:\n{}", title)
+        } else {
+            "⚠️ Referendum title has been removed.".to_string()
+        };
+        self.telegram_client
+            .send_message(
+                db_referendum.telegram_chat_id,
+                Some(db_referendum.telegram_topic_id),
+                &message,
+            )
+            .await?;
+        Ok(())
+    }
+
     async fn update_referendum_status(
         &self,
         db_referendum: &Referendum,
@@ -441,29 +471,43 @@ impl TelegramBot {
                     .get_referendum_by_index(chain.id, subsquare_referendum.referendum_index)
                     .await?;
                 if let Some(db_referendum) = maybe_db_referendum.as_ref() {
-                    let preimage_exists = match self
-                        .voter
-                        .get_referendum_lookup(chain, db_referendum.index)
-                        .await?
-                    {
-                        Some(lookup) => self.voter.get_preimage(chain, &lookup).await?.is_some(),
-                        None => false,
-                    };
-                    if subsquare_referendum.state.status.is_ongoing()
-                        && db_referendum.preimage_exists != preimage_exists
-                    {
-                        self.update_referendum_preimage_exists(
-                            db_referendum,
-                            chain,
-                            preimage_exists,
-                        )
-                        .await?;
-                    }
-                    if db_referendum.status != subsquare_referendum.state.status
-                        && !db_referendum.is_archived
-                    {
-                        self.update_referendum_status(db_referendum, subsquare_referendum, chain)
+                    if !db_referendum.is_archived {
+                        let preimage_exists = match self
+                            .voter
+                            .get_referendum_lookup(chain, db_referendum.index)
+                            .await?
+                        {
+                            Some(lookup) => {
+                                self.voter.get_preimage(chain, &lookup).await?.is_some()
+                            }
+                            None => false,
+                        };
+                        if subsquare_referendum.state.status.is_ongoing()
+                            && db_referendum.preimage_exists != preimage_exists
+                        {
+                            self.update_referendum_preimage_exists(
+                                db_referendum,
+                                chain,
+                                preimage_exists,
+                            )
                             .await?;
+                        }
+                        if db_referendum.title != subsquare_referendum.title {
+                            self.update_referendum_title(
+                                db_referendum,
+                                chain,
+                                &subsquare_referendum.title,
+                            )
+                            .await?;
+                        }
+                        if db_referendum.status != subsquare_referendum.state.status {
+                            self.update_referendum_status(
+                                db_referendum,
+                                subsquare_referendum,
+                                chain,
+                            )
+                            .await?;
+                        }
                     }
                 } else if (ReferendumStatus::Deciding == subsquare_referendum.state.status
                     || ReferendumStatus::Confirming == subsquare_referendum.state.status)
