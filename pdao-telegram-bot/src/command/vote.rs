@@ -86,7 +86,7 @@ impl TelegramBot {
                 majority_threshold,
                 ..
             } => format!(
-                "{} ayes & abstains, more than the {:.1}% majority threshold for {} ({:.1} votes).\n**Vote #{}: ⚪ ABSTAIN",
+                "{} ayes & abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n**Vote #{}: ⚪ ABSTAIN",
                 aye_count + abstain_count,
                 voting_policy.majority_percent,
                 db_referendum.track.name(),
@@ -100,7 +100,7 @@ impl TelegramBot {
             VotingPolicyEvaluation::Aye {
                 majority_threshold, ..
             } => format!(
-                "{} ayes greater than the {:.1}% majority threshold ({:.1} votes) for {}.\n**Vote #{}: 🟢 AYE",
+                "{} ayes greater than the {:.1}% majority threshold ({:.1} votes) for the {} track.\n**Vote #{}: 🟢 AYE",
                 aye_count,
                 voting_policy.majority_percent,
                 majority_threshold,
