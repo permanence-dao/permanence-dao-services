@@ -103,9 +103,7 @@ impl VotingPolicy {
                     majority_threshold: aye_nay_majority_threshold,
                     quorum_threshold,
                 }
-            } else if abstain_count > 0
-                && ((aye_count + abstain_count) as f32) > total_majority_threshold
-            {
+            } else if ((aye_count + abstain_count) as f32) > total_majority_threshold {
                 VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
                     aye_count,
                     nay_count,
@@ -130,9 +128,7 @@ impl VotingPolicy {
                 majority_threshold: aye_nay_majority_threshold,
                 quorum_threshold,
             }
-        } else if abstain_count > 0
-            && ((aye_count + abstain_count) as f32) > total_majority_threshold
-        {
+        } else if ((aye_count + abstain_count) as f32) > total_majority_threshold {
             VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
                 aye_count,
                 nay_count,
