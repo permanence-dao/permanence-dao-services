@@ -311,6 +311,15 @@ mod tests {
                 majority_threshold: 2,
             },
         );
+        assert_eq!(
+            policy.evaluate(8, 1, 3, 4),
+            VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
+                aye_count: 1,
+                nay_count: 3,
+                abstain_count: 4,
+                majority_threshold: 4,
+            },
+        );
     }
 
     #[test]
@@ -368,6 +377,15 @@ mod tests {
                 nay_count: 4,
                 abstain_count: 2,
                 majority_threshold: 3,
+            },
+        );
+        assert_eq!(
+            policy.evaluate(8, 1, 3, 4),
+            VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
+                aye_count: 1,
+                nay_count: 3,
+                abstain_count: 4,
+                majority_threshold: 4,
             },
         );
     }
@@ -463,6 +481,24 @@ mod tests {
                 nay_count: 1,
                 abstain_count: 3,
                 majority_threshold: 4,
+            },
+        );
+        assert_eq!(
+            policy.evaluate(8, 1, 1, 4),
+            VotingPolicyEvaluation::MajorityAbstain {
+                aye_count: 1,
+                nay_count: 1,
+                abstain_count: 4,
+                majority_threshold: 3,
+            },
+        );
+        assert_eq!(
+            policy.evaluate(8, 1, 3, 4),
+            VotingPolicyEvaluation::Nay {
+                aye_count: 1,
+                nay_count: 3,
+                abstain_count: 4,
+                majority_threshold: 2,
             },
         );
     }

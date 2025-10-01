@@ -57,7 +57,7 @@ impl TelegramBot {
                 ..
             } => {
                 message = format!(
-                    "{message}\n{} is no vote before a total of {} votes.\n➖ NO VOTE",
+                    "{} is no vote before a total of {} votes.\n➖ NO VOTE",
                     db_referendum.track.name(),
                     participation_threshold,
                 );
@@ -75,7 +75,7 @@ impl TelegramBot {
                 majority_threshold,
                 ..
             } => format!(
-                "{} abstains, more than the abstain threshold of {} votes.\n**Vote #{}: ⚪ ABSTAIN",
+                "{} abstains, more than the simple majority abstain threshold of {} votes.\n**Vote #{}: ⚪ ABSTAIN",
                 abstain_count,
                 majority_threshold,
                 past_votes.len() + 1,
@@ -86,9 +86,10 @@ impl TelegramBot {
                 majority_threshold,
                 ..
             } => format!(
-                "{} ayes & abstains, more than the {:.2}% majority threshold of {} votes.\n**Vote #{}: ⚪ ABSTAIN",
+                "{} ayes & abstains, more than the {:.1}% majority threshold for {} ({} votes).\n**Vote #{}: ⚪ ABSTAIN",
                 aye_count + abstain_count,
                 voting_policy.majority_percent,
+                db_referendum.track.name(),
                 majority_threshold,
                 past_votes.len() + 1,
             ),
@@ -99,7 +100,7 @@ impl TelegramBot {
             VotingPolicyEvaluation::Aye {
                 majority_threshold, ..
             } => format!(
-                "{} ayes greater than the {:.2}% majority threshold ({} votes) for {}.\n**Vote #{}: 🟢 AYE",
+                "{} ayes greater than the {:.1}% majority threshold ({} votes) for {}.\n**Vote #{}: 🟢 AYE",
                 aye_count,
                 voting_policy.majority_percent,
                 majority_threshold,
