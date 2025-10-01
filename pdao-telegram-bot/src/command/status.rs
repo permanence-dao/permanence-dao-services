@@ -35,6 +35,7 @@ impl TelegramBot {
 
         let voting_policy = VotingPolicy::voting_policy_for_track(&db_referendum.track);
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
+        let participation = aye_count + nay_count + abstain_count;
         let block_number = subsquare_referendum.state.block.number;
         let maybe_blocks_left = match subsquare_referendum.state.status {
             ReferendumStatus::Deciding => {
@@ -137,10 +138,10 @@ impl TelegramBot {
                 "{}{} ayes and abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n⚪ ABSTAIN",
                 if quorum_threshold > 0.0 {
                     &format!(
-                        "{}% aye-quorum of at least {:.1} members out of {} voters not met.\n",
+                        "{}% aye-quorum of at least {:.1} out of {} votes not met.\n",
                         voting_policy.quorum_percent,
                         quorum_threshold,
-                        voting_member_count,
+                        participation,
                     )
                 } else {
                     ""
@@ -160,10 +161,10 @@ impl TelegramBot {
                 ..
             } => if quorum_threshold > 0.0 {
                 format!(
-                    "{:.1}% aye-quorum of at least {:.1} members out of {} voters satisfied for the {} track.\n🟢 AYE",
+                    "{:.1}% aye-quorum of at least {:.1} out of {} votes satisfied for the {} track.\n🟢 AYE",
                     voting_policy.quorum_percent,
                     quorum_threshold,
-                    voting_member_count,
+                    participation,
                     db_referendum.track.name(),
                 )
             } else {

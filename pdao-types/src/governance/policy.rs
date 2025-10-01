@@ -435,6 +435,16 @@ mod tests {
                 quorum_threshold: 4.0,
             },
         );
+        assert_eq!(
+            policy.evaluate(8, 4, 3, 1),
+            VotingPolicyEvaluation::Aye {
+                aye_count: 4,
+                nay_count: 3,
+                abstain_count: 1,
+                majority_threshold: 3.5,
+                quorum_threshold: 4.0,
+            },
+        );
     }
 
     #[test]
@@ -575,6 +585,16 @@ mod tests {
                 abstain_count: 0,
                 majority_threshold: 2.4,
                 quorum_threshold: 2.4,
+            },
+        );
+        assert_eq!(
+            policy.evaluate(8, 1, 3, 4),
+            VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
+                aye_count: 1,
+                nay_count: 3,
+                abstain_count: 4,
+                majority_threshold: 4.8,
+                quorum_threshold: 4.8,
             },
         );
     }

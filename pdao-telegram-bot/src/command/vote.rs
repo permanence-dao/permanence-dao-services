@@ -39,6 +39,7 @@ impl TelegramBot {
                 .await?;
         let voting_policy = VotingPolicy::voting_policy_for_track(&db_referendum.track);
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
+        let participation = aye_count + nay_count + abstain_count;
         let past_votes = self.postgres.get_referendum_votes(db_referendum.id).await?;
         let vote = voting_policy.evaluate(voting_member_count, aye_count, nay_count, abstain_count);
         let mut message = format!("{voting_member_count} available members.");
@@ -90,10 +91,10 @@ impl TelegramBot {
                 "{}{} ayes and abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n**Vote #{}: ⚪ ABSTAIN",
                 if quorum_threshold > 0.0 {
                     &format!(
-                        "{}% aye-Quorum of {:.1} members out of {} voters not met.\n",
+                        "{}% aye-quorum of at least {:.1} out of {} votes not met.\n",
                         voting_policy.quorum_percent,
                         quorum_threshold,
-                        voting_member_count,
+                        participation,
                     )
                 } else {
                     ""
@@ -114,10 +115,10 @@ impl TelegramBot {
                 ..
             } => if quorum_threshold > 0.0 {
                 format!(
-                    "{}% aye-quorum of {:.1} members out of {} voters satisfied for the {} track.\n**Vote #{}: 🟢 AYE",
+                    "{}% aye-quorum of at least {:.1} out of {} votes satisfied for the {} track.\n**Vote #{}: 🟢 AYE",
                     voting_policy.quorum_percent,
                     quorum_threshold,
-                    voting_member_count,
+                    participation,
                     db_referendum.track.name(),
                     past_votes.len() + 1,
                 )
