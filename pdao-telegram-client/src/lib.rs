@@ -148,7 +148,7 @@ impl TelegramClient {
                 chat_id: ChatId::Integer(chat_id),
                 message_thread_id: thread_id,
                 direct_messages_topic_id: None,
-                text: html_escape::encode_text(message).to_string(),
+                text: message.to_string(),
                 #[allow(deprecated)]
                 parse_mode: Some(ParseMode::Markdown),
                 entities: None,
