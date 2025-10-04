@@ -5,7 +5,7 @@ use crate::command::util::{
     require_voting_admin,
 };
 use crate::TelegramBot;
-use pdao_types::governance::policy::{VotingPolicy, VotingPolicyEvaluation};
+use pdao_types::governance::policy::{Policy, VoteCounts};
 use pdao_types::substrate::chain::Chain;
 
 impl TelegramBot {
@@ -37,116 +37,29 @@ impl TelegramBot {
         let opensquare_votes =
             require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
                 .await?;
-        let voting_policy = VotingPolicy::voting_policy_for_track(&db_referendum.track);
+        let policy = Policy::policy_for_track(&db_referendum.track);
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
-        let participation = aye_count + nay_count + abstain_count;
         let past_votes = self.postgres.get_referendum_votes(db_referendum.id).await?;
-        let vote = voting_policy.evaluate(voting_member_count, aye_count, nay_count, abstain_count);
+        let (evaluation, description_lines) = policy.evaluate(VoteCounts::new(
+            voting_member_count,
+            aye_count,
+            nay_count,
+            abstain_count,
+        ));
         let mut message = format!("{voting_member_count} available members.");
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
-        let evaluation = match vote {
-            VotingPolicyEvaluation::AbstainThresholdNotMet {
-                abstain_threshold, ..
-            } => format!(
-                "{} is abstain before a total of {:.1} votes.\n**Vote #{}: ⚪ ABSTAIN",
-                db_referendum.track.name(),
-                abstain_threshold,
-                past_votes.len() + 1,
-            ),
-            VotingPolicyEvaluation::ParticipationNotMet {
-                participation_threshold,
-                ..
-            } => {
-                message = format!(
-                    "{} is no vote before a total of {:.1} votes.\n➖ NO VOTE",
-                    db_referendum.track.name(),
-                    participation_threshold,
-                );
-                self.telegram_client
-                    .send_message(
-                        chat_id,
-                        Some(thread_id),
-                        &message,
-                    )
-                    .await?;
-                return Ok(());
-            },
-            VotingPolicyEvaluation::MajorityAbstain {
-                abstain_count,
-                majority_threshold,
-                ..
-            } => format!(
-                "{} abstains, more than the simple majority abstain threshold of {:.1} votes.\n**Vote #{}: ⚪ ABSTAIN",
-                abstain_count,
-                majority_threshold,
-                past_votes.len() + 1,
-            ),
-            VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
-                aye_count,
-                abstain_count,
-                majority_threshold,
-                quorum_threshold,
-                ..
-            } => format!(
-                "{}{} ayes and abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n**Vote #{}: ⚪ ABSTAIN",
-                if quorum_threshold > 0.0 {
-                    &format!(
-                        "{}% aye-quorum of at least {:.1} out of {} votes not met.\n",
-                        voting_policy.quorum_percent,
-                        quorum_threshold,
-                        participation,
-                    )
+
+        let outcome = match evaluation.simplify()? {
+            None => "⚪ ABSTAIN",
+            Some(vote) => {
+                if vote {
+                    "🟢 AYE"
                 } else {
-                    ""
-                },
-                aye_count + abstain_count,
-                voting_policy.majority_percent,
-                db_referendum.track.name(),
-                majority_threshold,
-                past_votes.len() + 1,
-            ),
-            VotingPolicyEvaluation::AyeEqualsNayAbstain { .. } => format!(
-                "Ayes are equal to nays with no abstains.\n**Vote #{}: ⚪ ABSTAIN",
-                past_votes.len() + 1,
-            ),
-            VotingPolicyEvaluation::Aye {
-                majority_threshold,
-                quorum_threshold,
-                ..
-            } => if quorum_threshold > 0.0 {
-                format!(
-                    "{}% aye-quorum of at least {:.1} out of {} votes satisfied for the {} track.\n**Vote #{}: 🟢 AYE",
-                    voting_policy.quorum_percent,
-                    quorum_threshold,
-                    participation,
-                    db_referendum.track.name(),
-                    past_votes.len() + 1,
-                )
-            } else {
-                format!(
-                    "{} ayes, greater than the {:.1}% majority threshold ({:.1} votes) for the {} track.\n**Vote #{}: 🟢 AYE",
-                    aye_count,
-                    voting_policy.majority_percent,
-                    majority_threshold,
-                    db_referendum.track.name(),
-                    past_votes.len() + 1,
-                )
-            },
-            VotingPolicyEvaluation::Nay {
-                quorum_threshold,
-                ..
-            } => format!(
-                "{} {}aye or abstain requirements not met.\n**Vote #{}: 🔴 NAY",
-                db_referendum.track.name(),
-                if quorum_threshold > 0.0 {
-                    "quorum, "
-                } else {
-                    ""
-                },
-                past_votes.len() + 1,
-            ),
+                    "🔴 NAY"
+                }
+            }
         };
-        message = format!("{message}\n{evaluation}");
+        message = format!("{message}\n\n{}\n{outcome}", description_lines.join("\n"));
 
         self.telegram_client
             .send_message(
@@ -170,7 +83,7 @@ impl TelegramBot {
                 &chain,
                 db_referendum.index,
                 db_referendum.has_coi,
-                vote.simplify()?,
+                evaluation.simplify()?,
                 balance,
                 conviction,
             )
@@ -179,7 +92,12 @@ impl TelegramBot {
             log::info!("Get OpenAI feedback summary.");
             let feedback = self
                 .openai_client
-                .fetch_feedback_summary(&chain, &subsquare_referendum, vote, &opensquare_votes)
+                .fetch_feedback_summary(
+                    &chain,
+                    &subsquare_referendum,
+                    &evaluation,
+                    &opensquare_votes,
+                )
                 .await?;
             log::info!("Post SubSquare comment.");
             let (cid, index) = if let Some(Some(first_vote_cid)) = past_votes
@@ -194,10 +112,10 @@ impl TelegramBot {
                         opensquare_cid,
                         &first_vote_cid,
                         &db_referendum.track,
-                        &voting_policy,
+                        &policy,
                         past_votes.len() as u32,
                         voting_member_count,
-                        &vote,
+                        &evaluation,
                         db_referendum.has_coi,
                         &feedback,
                     )
@@ -211,10 +129,10 @@ impl TelegramBot {
                         &subsquare_referendum,
                         opensquare_cid,
                         &db_referendum.track,
-                        &voting_policy,
+                        &policy,
                         past_votes.len() as u32,
                         voting_member_count,
-                        &vote,
+                        &evaluation,
                         db_referendum.has_coi,
                         &feedback,
                     )
@@ -236,7 +154,7 @@ impl TelegramBot {
                 &block_hash,
                 block_number,
                 extrinsic_index,
-                vote.simplify()?,
+                evaluation.simplify()?,
                 balance,
                 conviction,
                 subsquare_cid.as_deref(),

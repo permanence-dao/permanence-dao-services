@@ -1,6 +1,6 @@
 use pdao_config::{Config, OpenAPIConfig};
 use pdao_types::governance::opensquare::{OpenSquareReferendumVote, OpenSquareVote};
-use pdao_types::governance::policy::VotingPolicyEvaluation;
+use pdao_types::governance::policy::PolicyEvaluation;
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::openai::{
     OpenAICompletionRequest, OpenAICompletionResponse, OpenAIMessage, OpenAIModel, OpenAIRole,
@@ -86,7 +86,7 @@ impl OpenAIClient {
         &self,
         chain: &Chain,
         sub_square_referendum: &SubSquareReferendum,
-        vote: VotingPolicyEvaluation,
+        vote: &PolicyEvaluation,
         votes: &[OpenSquareReferendumVote],
     ) -> anyhow::Result<String> {
         let mut prompt_parts: Vec<String> = Vec::new();
@@ -103,13 +103,13 @@ impl OpenAIClient {
         let json = serde_json::to_string(&sub_square_referendum)?;
         prompt_parts.push(serde_json::to_string(&json)?);
         let vote = match vote {
-            VotingPolicyEvaluation::AbstainThresholdNotMet { .. } => "ABSTAIN",
-            VotingPolicyEvaluation::ParticipationNotMet { .. } => "NO VOTE",
-            VotingPolicyEvaluation::AyeAbstainMajorityAbstain { .. } => "ABSTAIN",
-            VotingPolicyEvaluation::MajorityAbstain { .. } => "ABSTAIN",
-            VotingPolicyEvaluation::AyeEqualsNayAbstain { .. } => "ABSTAIN",
-            VotingPolicyEvaluation::Aye { .. } => "AYE",
-            VotingPolicyEvaluation::Nay { .. } => "NAY",
+            PolicyEvaluation::AbstainThresholdNotMet { .. } => "ABSTAIN",
+            PolicyEvaluation::ParticipationNotMet { .. } => "NO VOTE",
+            PolicyEvaluation::AyeAbstainMajorityAbstain { .. } => "ABSTAIN",
+            PolicyEvaluation::MajorityAbstain { .. } => "ABSTAIN",
+            PolicyEvaluation::AyeEqualsNayAbstain { .. } => "ABSTAIN",
+            PolicyEvaluation::Aye { .. } => "AYE",
+            PolicyEvaluation::Nay { .. } => "NAY",
         };
         prompt_parts.push(format!(
             "The vote of the DAO on this referendum determined by its voting policy that applies to this referendum is {vote}.",

@@ -2,7 +2,7 @@ use chrono::Utc;
 use num2words::{Lang, Num2Words};
 use num_ordinal::{Ordinal, O32};
 use pdao_config::Config;
-use pdao_types::governance::policy::{VotingPolicy, VotingPolicyEvaluation};
+use pdao_types::governance::policy::{Policy, PolicyEvaluation};
 use pdao_types::governance::subsquare::{
     SubSquareCommentData, SubSquareCommentIndexerData, SubSquareCommentReplyData,
     SubSquareCommentReplyRequest, SubSquareCommentRequest, SubSquareCommentResponse,
@@ -19,10 +19,10 @@ fn get_vote_content(
     voting_policy_version: &str,
     cid: &str,
     track: &Track,
-    policy: &VotingPolicy,
+    _policy: &Policy,
     previous_vote_count: u32,
     member_count: u32,
-    vote: &VotingPolicyEvaluation,
+    vote: &PolicyEvaluation,
     has_coi: bool,
     feedback_summary: &str,
     delegation_address: &str,
@@ -40,11 +40,11 @@ fn get_vote_content(
         | Track::GeneralAdmin
         | Track::AuctionAdmin
         | Track::ReferendumCanceller
-        | Track::ReferendumKiller => format!("requires more than {:.1}% of non-abstain votes", policy.majority_percent),
+        | Track::ReferendumKiller => format!("requires more than {:.1}% of non-abstain votes", 0.999999999),
         Track::SmallTipper | Track::BigTipper | Track::SmallSpender => format!(
             "is abstain before {:.1}% participation, and requires more than {:.1}% of non-abstain votes after the participation requirement",
-            policy.abstain_before_percent,
-            policy.majority_percent,
+            0.999999999,
+            0.999999999,
         ),
     };
     let abstain_summary = if vote.get_abstain_count() > 0 {
@@ -187,10 +187,10 @@ impl SubSquareClient {
         referendum: &SubSquareReferendum,
         cid: &str,
         track: &Track,
-        policy: &VotingPolicy,
+        policy: &Policy,
         previous_vote_count: u32,
         member_count: u32,
-        vote: &VotingPolicyEvaluation,
+        vote: &PolicyEvaluation,
         has_coi: bool,
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {
@@ -276,10 +276,10 @@ impl SubSquareClient {
         cid: &str,
         comment_cid: &str,
         track: &Track,
-        policy: &VotingPolicy,
+        policy: &Policy,
         previous_vote_count: u32,
         member_count: u32,
-        vote: &VotingPolicyEvaluation,
+        vote: &PolicyEvaluation,
         has_coi: bool,
         feedback_summary: &str,
     ) -> anyhow::Result<SubSquareCommentResponse> {

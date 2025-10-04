@@ -4,7 +4,7 @@ use crate::command::util::{
     require_subsquare_referendum, require_thread,
 };
 use crate::TelegramBot;
-use pdao_types::governance::policy::{VotingPolicy, VotingPolicyEvaluation};
+use pdao_types::governance::policy::{Policy, VoteCounts};
 use pdao_types::governance::ReferendumStatus;
 use pdao_types::substrate::chain::Chain;
 
@@ -33,9 +33,8 @@ impl TelegramBot {
             require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
                 .await?;
 
-        let voting_policy = VotingPolicy::voting_policy_for_track(&db_referendum.track);
+        let policy = Policy::policy_for_track(&db_referendum.track);
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
-        let participation = aye_count + nay_count + abstain_count;
         let block_number = subsquare_referendum.state.block.number;
         let maybe_blocks_left = match subsquare_referendum.state.status {
             ReferendumStatus::Deciding => {
@@ -102,97 +101,16 @@ impl TelegramBot {
         message = format!("{message}\n{voting_member_count} available members.");
         message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
 
-        let vote = voting_policy.evaluate(voting_member_count, aye_count, nay_count, abstain_count);
-        let evaluation = match vote {
-            VotingPolicyEvaluation::AbstainThresholdNotMet {
-                abstain_threshold, ..
-            } => format!(
-                "{} is abstain before a total of {:.1} votes.\n⚪ ABSTAIN",
-                db_referendum.track.name(),
-                abstain_threshold,
-            ),
-            VotingPolicyEvaluation::ParticipationNotMet {
-                participation_threshold,
-                ..
-            } => format!(
-                "{} is no vote before a total of {:.1} votes.\n➖ NO VOTE",
-                db_referendum.track.name(),
-                participation_threshold,
-            ),
-            VotingPolicyEvaluation::MajorityAbstain {
-                abstain_count,
-                majority_threshold,
-                ..
-            } => format!(
-                "{} abstains, more than the simple majority abstain threshold of {:.1} votes.\n⚪ ABSTAIN",
-                abstain_count,
-                majority_threshold,
-            ),
-            VotingPolicyEvaluation::AyeAbstainMajorityAbstain {
-                aye_count,
-                abstain_count,
-                majority_threshold,
-                quorum_threshold,
-                ..
-            } => format!(
-                "{}{} ayes and abstains, more than the {:.1}% majority threshold for the {} track ({:.1} votes).\n⚪ ABSTAIN",
-                if quorum_threshold > 0.0 {
-                    &format!(
-                        "{}% aye-quorum of at least {:.1} out of {} votes not met.\n",
-                        voting_policy.quorum_percent,
-                        quorum_threshold,
-                        participation,
-                    )
-                } else {
-                    ""
-                },
-                aye_count + abstain_count,
-                voting_policy.majority_percent,
-                db_referendum.track.name(),
-                majority_threshold,
-            ),
-            VotingPolicyEvaluation::AyeEqualsNayAbstain { .. } => {
-                "Ayes are equal to nays with no abstains.\n⚪ ABSTAIN".to_string()
-            }
-            VotingPolicyEvaluation::Aye {
-                aye_count,
-                majority_threshold,
-                quorum_threshold,
-                ..
-            } => if quorum_threshold > 0.0 {
-                format!(
-                    "{:.1}% aye-quorum of at least {:.1} out of {} votes satisfied for the {} track.\n🟢 AYE",
-                    voting_policy.quorum_percent,
-                    quorum_threshold,
-                    participation,
-                    db_referendum.track.name(),
-                )
-            } else {
-                format!(
-                    "{} ayes, greater than the {:.1}% majority threshold ({:.1} votes) for the {} track.\n🟢 AYE",
-                    aye_count,
-                    voting_policy.majority_percent,
-                    majority_threshold,
-                    db_referendum.track.name(),
-                )
-            },
-            VotingPolicyEvaluation::Nay {
-                quorum_threshold,
-                ..
-            } => format!(
-                "{} {}aye or abstain requirements not met.\n🔴 NAY",
-                db_referendum.track.name(),
-                if quorum_threshold > 0.0 {
-                    "quorum, "
-                } else {
-                    ""
-                },
-            ),
-        };
-        message = format!("{message}\n{evaluation}");
+        let (_, description_lines) = policy.evaluate(VoteCounts::new(
+            voting_member_count,
+            aye_count,
+            nay_count,
+            abstain_count,
+        ));
+        message = format!("{message}\n\n{}", description_lines.join("\n"));
 
         if opensquare_referendum.status.to_lowercase() != "active" {
-            message = format!("{message}\nMirror referendum has been terminated.");
+            message = format!("{message}\n\nMirror referendum has been terminated.");
         }
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)

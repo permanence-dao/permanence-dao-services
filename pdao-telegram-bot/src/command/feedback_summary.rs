@@ -3,7 +3,7 @@ use crate::command::util::{
     require_opensquare_cid, require_opensquare_votes, require_subsquare_referendum, require_thread,
 };
 use crate::TelegramBot;
-use pdao_types::governance::policy::{VotingPolicy, VotingPolicyEvaluation};
+use pdao_types::governance::policy::{Policy, PolicyEvaluation, VoteCounts};
 use pdao_types::substrate::chain::Chain;
 
 impl TelegramBot {
@@ -53,12 +53,17 @@ impl TelegramBot {
             return Ok(());
         }
         let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
-        let voting_policy = VotingPolicy::voting_policy_for_track(&db_referendum.track);
-        let vote = voting_policy.evaluate(voting_member_count, aye_count, nay_count, abstain_count);
-        if let VotingPolicyEvaluation::ParticipationNotMet {
+        let voting_policy = Policy::policy_for_track(&db_referendum.track);
+        let (evaluation, _) = voting_policy.evaluate(VoteCounts::new(
+            voting_member_count,
+            aye_count,
+            nay_count,
+            abstain_count,
+        ));
+        if let PolicyEvaluation::ParticipationNotMet {
             participation_threshold,
             ..
-        } = vote
+        } = evaluation
         {
             self.telegram_client
                     .send_message(
@@ -76,7 +81,12 @@ impl TelegramBot {
 
         let summary = self
             .openai_client
-            .fetch_feedback_summary(&chain, &subsquare_referendum, vote, &opensquare_votes)
+            .fetch_feedback_summary(
+                &chain,
+                &subsquare_referendum,
+                &evaluation,
+                &opensquare_votes,
+            )
             .await?;
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &summary)
