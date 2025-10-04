@@ -162,12 +162,9 @@ impl Policy {
         match &self.participation_requirement {
             ParticipationRequirement::AbstainBeforePercent(comparison) => {
                 let line = format!(
-                    "Abstain before {}{:.1}% participation ({}{:.1} / {} members).",
+                    "Abstain before {}{:.1}% participation.",
                     comparison.symbol(),
                     comparison.threshold_rate(),
-                    comparison.symbol(),
-                    comparison.threshold_rate() * vote_counts.members as f32 / 100.0,
-                    vote_counts.members,
                 );
                 if !comparison.holds(participation_percent) {
                     description_lines.push(format!("▶️ {}", line));
@@ -187,12 +184,9 @@ impl Policy {
             }
             ParticipationRequirement::NoVoteBeforePercent(comparison) => {
                 let line = format!(
-                    "No vote before {}{:.1}% participation ({}{:.1} / {} members).",
+                    "No vote before {}{:.1}% participation.",
                     comparison.symbol(),
                     comparison.threshold_rate(),
-                    comparison.symbol(),
-                    comparison.threshold_rate() * vote_counts.members as f32 / 100.0,
-                    vote_counts.members,
                 );
                 if !comparison.holds(participation_percent) {
                     description_lines.push(format!("▶️ {}", line));
@@ -235,7 +229,7 @@ impl Policy {
             description_lines.push(format!("✔️ {}", majority_abstain_line));
         }
 
-        let ayes_equal_nays_line = "Abstain if ayes are equal to nays without any abstain votes.";
+        let ayes_equal_nays_line = "Abstain if ayes are equal to nays with no abstains.";
         if vote_counts.abstains == 0 && (vote_counts.ayes == vote_counts.nays) {
             description_lines.push(format!("▶️ {}", ayes_equal_nays_line));
             description_lines.push("⚪ ABSTAIN".to_string());
@@ -248,7 +242,7 @@ impl Policy {
         }
 
         let aye_line = format!(
-            "Aye if {}{:.1}% are aye out of of {} votes.",
+            "Aye if {}{:.1}% ayes out of {} votes.",
             self.majority_comparison.symbol(),
             self.majority_comparison.threshold_rate(),
             match self.majority_denominator {
