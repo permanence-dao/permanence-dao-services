@@ -185,6 +185,7 @@ impl Policy {
 
         description_lines.push("```".to_string());
         description_lines.push(self.track.name().to_string());
+        description_lines.push("-".repeat(self.track.name().len()));
         match &self.participation_requirement {
             ParticipationRequirement::AbstainBeforePercent(comparison) => {
                 if !comparison.holds(participation_percent) {
