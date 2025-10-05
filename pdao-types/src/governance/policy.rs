@@ -29,11 +29,13 @@ impl VoteCounts {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum ParticipationRequirement {
     AbstainBeforePercent(Comparison),
     NoVoteBeforePercent(Comparison),
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum MajorityNominator {
     Ayes,
     Nays,
@@ -50,6 +52,7 @@ impl MajorityNominator {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum MajorityDenominator {
     OfNonAbstainVotes,
     OfAllVotes,
@@ -69,7 +72,7 @@ impl MajorityDenominator {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Comparison {
     GreaterThan(f32),
     GreaterThanOrEqual(f32),
@@ -96,9 +99,18 @@ impl Comparison {
             Comparison::GreaterThanOrEqual(_) => "≥".to_string(),
         }
     }
+
+    pub fn negative_symbol(&self) -> String {
+        match self {
+            Comparison::GreaterThan(_) => "≤".to_string(),
+            Comparison::GreaterThanOrEqual(_) => "<".to_string(),
+        }
+    }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Policy {
+    track: Track,
     participation_requirement: ParticipationRequirement,
     majority_nominator: MajorityNominator,
     majority_comparison: Comparison,
@@ -120,6 +132,7 @@ impl Policy {
             | Track::ReferendumCanceller
             | Track::ReferendumKiller
             | Track::BigSpender => Self {
+                track: *track,
                 participation_requirement: ParticipationRequirement::NoVoteBeforePercent(
                     Comparison::GreaterThanOrEqual(50.0),
                 ),
@@ -128,6 +141,7 @@ impl Policy {
                 majority_denominator: MajorityDenominator::OfAllVotes,
             },
             Track::MediumSpender => Self {
+                track: *track,
                 participation_requirement: ParticipationRequirement::NoVoteBeforePercent(
                     Comparison::GreaterThanOrEqual(50.0),
                 ),
@@ -136,6 +150,7 @@ impl Policy {
                 majority_denominator: MajorityDenominator::OfAllVotes,
             },
             Track::SmallSpender | Track::BigTipper => Self {
+                track: *track,
                 participation_requirement: ParticipationRequirement::AbstainBeforePercent(
                     Comparison::GreaterThanOrEqual(37.5),
                 ),
@@ -144,6 +159,7 @@ impl Policy {
                 majority_denominator: MajorityDenominator::OfNonAbstainVotes,
             },
             Track::SmallTipper => Self {
+                track: *track,
                 participation_requirement: ParticipationRequirement::AbstainBeforePercent(
                     Comparison::GreaterThanOrEqual(25.0),
                 ),
@@ -158,17 +174,27 @@ impl Policy {
         let participation_percent =
             (vote_counts.participation() as f32) * 100.0 / (vote_counts.members as f32);
         let simple_majority_threshold = 50.0 * (vote_counts.participation() as f32) / 100.0;
+        let majority_nominator = self.majority_nominator.get(&vote_counts) as f32;
+        let majority_denominator = self.majority_denominator.get(&vote_counts) as f32;
+        let non_aye_percent = (vote_counts.ayes + vote_counts.abstains) as f32 * 100.0
+            / vote_counts.participation() as f32;
+        let majority_percent = majority_nominator * 100.0 / majority_denominator;
+        let majority_threshold =
+            self.majority_comparison.threshold_rate() * majority_denominator / 100.0;
         let mut description_lines = Vec::new();
+
+        description_lines.push("```".to_string());
+        description_lines.push(self.track.name().to_string());
         match &self.participation_requirement {
             ParticipationRequirement::AbstainBeforePercent(comparison) => {
-                let line = format!(
-                    "Abstain before {}{:.1}% participation.",
-                    comparison.symbol(),
-                    comparison.threshold_rate(),
-                );
                 if !comparison.holds(participation_percent) {
-                    description_lines.push(format!("▶️ {}", line));
+                    description_lines.push(format!(
+                        "▶️ Abstain before {}{:.1}% participation.",
+                        comparison.symbol(),
+                        comparison.threshold_rate(),
+                    ));
                     description_lines.push("⚪ ABSTAIN".to_string());
+                    description_lines.push("```".to_string());
                     return (
                         PolicyEvaluation::AbstainThresholdNotMet {
                             vote_counts,
@@ -179,18 +205,22 @@ impl Policy {
                         description_lines,
                     );
                 } else {
-                    description_lines.push(format!("✔️ {}", line));
+                    description_lines.push(format!(
+                        "✓ {}{:.1}% required participation met.",
+                        comparison.symbol(),
+                        comparison.threshold_rate(),
+                    ));
                 }
             }
             ParticipationRequirement::NoVoteBeforePercent(comparison) => {
-                let line = format!(
-                    "No vote before {}{:.1}% participation.",
-                    comparison.symbol(),
-                    comparison.threshold_rate(),
-                );
                 if !comparison.holds(participation_percent) {
-                    description_lines.push(format!("▶️ {}", line));
+                    description_lines.push(format!(
+                        "▶ No vote before {}{:.1}% participation.",
+                        comparison.symbol(),
+                        comparison.threshold_rate(),
+                    ));
                     description_lines.push("➖ NO VOTE".to_string());
+                    description_lines.push("```".to_string());
                     return (
                         PolicyEvaluation::ParticipationNotMet {
                             vote_counts,
@@ -201,23 +231,19 @@ impl Policy {
                         description_lines,
                     );
                 } else {
-                    description_lines.push(format!("✔️ {}", line));
+                    description_lines.push(format!(
+                        "✓ {}{:.1}% required participation met.",
+                        comparison.symbol(),
+                        comparison.threshold_rate(),
+                    ));
                 }
             }
         }
 
-        let majority_nominator = self.majority_nominator.get(&vote_counts) as f32;
-        let majority_denominator = self.majority_denominator.get(&vote_counts) as f32;
-        let non_aye_percent = (vote_counts.ayes + vote_counts.abstains) as f32 * 100.0
-            / vote_counts.participation() as f32;
-        let majority_percent = majority_nominator * 100.0 / majority_denominator;
-        let majority_threshold =
-            self.majority_comparison.threshold_rate() * majority_denominator / 100.0;
-
-        let majority_abstain_line = "Abstain if >50% all votes are abstain.";
         if (vote_counts.abstains as f32) > simple_majority_threshold {
-            description_lines.push(format!("▶️ {}", majority_abstain_line));
+            description_lines.push("▶ Majority of all votes is abstain.".to_string());
             description_lines.push("⚪ ABSTAIN".to_string());
+            description_lines.push("```".to_string());
             return (
                 PolicyEvaluation::MajorityAbstain {
                     vote_counts,
@@ -225,34 +251,30 @@ impl Policy {
                 },
                 description_lines,
             );
-        } else {
-            description_lines.push(format!("✔️ {}", majority_abstain_line));
         }
 
-        let ayes_equal_nays_line = "Abstain if ayes are equal to nays with no abstains.";
         if vote_counts.abstains == 0 && (vote_counts.ayes == vote_counts.nays) {
-            description_lines.push(format!("▶️ {}", ayes_equal_nays_line));
+            description_lines.push("▶ Ayes equal nays with no abstains.".to_string());
             description_lines.push("⚪ ABSTAIN".to_string());
+            description_lines.push("```".to_string());
             return (
                 PolicyEvaluation::AyeEqualsNayAbstain { vote_counts },
                 description_lines,
             );
-        } else {
-            description_lines.push(format!("✔️ {}", ayes_equal_nays_line));
         }
 
-        let aye_line = format!(
-            "Aye if {}{:.1}% ayes out of {} votes.",
-            self.majority_comparison.symbol(),
-            self.majority_comparison.threshold_rate(),
-            match self.majority_denominator {
-                MajorityDenominator::OfNonAbstainVotes => "non-abstain",
-                MajorityDenominator::OfAllVotes => "all",
-            },
-        );
         if self.majority_comparison.holds(majority_percent) {
-            description_lines.push(format!("▶️ {}", aye_line));
+            description_lines.push(format!(
+                "▶ Ayes {}{:.1}% of {} votes.",
+                self.majority_comparison.symbol(),
+                self.majority_comparison.threshold_rate(),
+                match self.majority_denominator {
+                    MajorityDenominator::OfNonAbstainVotes => "non-abstain",
+                    MajorityDenominator::OfAllVotes => "all",
+                },
+            ));
             description_lines.push("🟢 AYE".to_string());
+            description_lines.push("```".to_string());
             return (
                 PolicyEvaluation::Aye {
                     vote_counts,
@@ -261,17 +283,25 @@ impl Policy {
                 description_lines,
             );
         } else {
-            description_lines.push(format!("❌ {}", aye_line));
+            description_lines.push(format!(
+                "✘ Ayes {}{:.1}% of {} votes.",
+                self.majority_comparison.negative_symbol(),
+                self.majority_comparison.threshold_rate(),
+                match self.majority_denominator {
+                    MajorityDenominator::OfNonAbstainVotes => "non-abstain",
+                    MajorityDenominator::OfAllVotes => "all",
+                },
+            ));
         }
 
-        let aye_abstain_majority_line = format!(
-            "Abstain if ayes and abstains are {}{:.1}% of all votes.",
-            self.majority_comparison.symbol(),
-            self.majority_comparison.threshold_rate(),
-        );
         if self.majority_comparison.holds(non_aye_percent) {
-            description_lines.push(format!("▶️ {}", aye_abstain_majority_line));
+            description_lines.push(format!(
+                "▶ Ayes and abstains are {}{:.1}% of all votes.",
+                self.majority_comparison.symbol(),
+                self.majority_comparison.threshold_rate(),
+            ));
             description_lines.push("⚪ ABSTAIN".to_string());
+            description_lines.push("```".to_string());
             return (
                 PolicyEvaluation::AyeAbstainMajorityAbstain {
                     vote_counts,
@@ -281,10 +311,10 @@ impl Policy {
                 },
                 description_lines,
             );
-        } else {
-            description_lines.push(format!("❌ {}", aye_abstain_majority_line));
         }
+        description_lines.push("▶ Aye/abstain conditions not met.".to_string());
         description_lines.push("🔴 NAY".to_string());
+        description_lines.push("```".to_string());
         (
             PolicyEvaluation::Nay {
                 vote_counts,
@@ -292,46 +322,6 @@ impl Policy {
             },
             description_lines,
         )
-    }
-
-    pub fn get_description(&self, vote_counts: &VoteCounts) -> String {
-        let mut lines = Vec::new();
-        match &self.participation_requirement {
-            ParticipationRequirement::AbstainBeforePercent(comparison) => lines.push(format!(
-                "Abstain before {}{:.1}% participation is met ({}{:.1} out of {} members).",
-                comparison.symbol(),
-                comparison.threshold_rate(),
-                comparison.symbol(),
-                comparison.threshold_rate() * vote_counts.members as f32 / 100.0,
-                vote_counts.members,
-            )),
-            ParticipationRequirement::NoVoteBeforePercent(comparison) => lines.push(format!(
-                "No vote before {}{:.1}% participation is met ({}{:.1} out of {} members).",
-                comparison.symbol(),
-                comparison.threshold_rate(),
-                comparison.symbol(),
-                comparison.threshold_rate() * vote_counts.members as f32 / 100.0,
-                vote_counts.members,
-            )),
-        }
-        lines.push("Abstain if ayes are equal to nays without any abstain votes.".to_string());
-        lines.push("Abstain if >50% all votes are abstain.".to_string());
-        lines.push(format!(
-            "Abstain if ayes and abstains are {}{:.1}% of all votes.",
-            self.majority_comparison.symbol(),
-            self.majority_comparison.threshold_rate(),
-        ));
-        lines.push(format!(
-            "Aye if {}{:.1}% are aye out of of {} votes.",
-            self.majority_comparison.symbol(),
-            self.majority_comparison.threshold_rate(),
-            match self.majority_denominator {
-                MajorityDenominator::OfNonAbstainVotes => "non-abstain",
-                MajorityDenominator::OfAllVotes => "all",
-            },
-        ));
-        lines.push("Nay if none of the above cases above hold.".to_string());
-        lines.join("\n")
     }
 }
 
