@@ -12,7 +12,6 @@ anyhow = { workspace = true }
 chrono = { workspace = true, default-features = true, features = ["serde"] }
 hex = { workspace = true }
 log = { workspace = true }
-num2words = { workspace = true }
 num-ordinal = { workspace = true }
 pdao-config = { path = "../pdao-config" }
 pdao-types = { path = "../pdao-types" }

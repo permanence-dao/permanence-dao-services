@@ -5,7 +5,7 @@ use crate::command::util::{
     require_voting_admin,
 };
 use crate::TelegramBot;
-use pdao_types::governance::policy::{Policy, VoteCounts};
+use pdao_types::governance::policy::Policy;
 use pdao_types::substrate::chain::Chain;
 
 impl TelegramBot {
@@ -38,28 +38,9 @@ impl TelegramBot {
             require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
                 .await?;
         let policy = Policy::policy_for_track(&db_referendum.track);
-        let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
+        let vote_counts = get_vote_counts(voting_member_count, &opensquare_votes);
         let past_votes = self.postgres.get_referendum_votes(db_referendum.id).await?;
-        let (evaluation, description_lines) = policy.evaluate(VoteCounts::new(
-            voting_member_count,
-            aye_count,
-            nay_count,
-            abstain_count,
-        ));
-        let mut message = format!("{voting_member_count} available members.");
-        message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
-
-        let outcome = match evaluation.simplify()? {
-            None => "⚪ ABSTAIN",
-            Some(vote) => {
-                if vote {
-                    "🟢 AYE"
-                } else {
-                    "🔴 NAY"
-                }
-            }
-        };
-        message = format!("{message}\n\n{}\n{outcome}", description_lines.join("\n"));
+        let (evaluation, description_lines) = policy.evaluate(&vote_counts);
 
         self.telegram_client
             .send_message(
@@ -111,11 +92,9 @@ impl TelegramBot {
                         &subsquare_referendum,
                         opensquare_cid,
                         &first_vote_cid,
-                        &db_referendum.track,
-                        &policy,
                         past_votes.len() as u32,
-                        voting_member_count,
                         &evaluation,
+                        &description_lines,
                         db_referendum.has_coi,
                         &feedback,
                     )
@@ -128,11 +107,9 @@ impl TelegramBot {
                         &chain,
                         &subsquare_referendum,
                         opensquare_cid,
-                        &db_referendum.track,
-                        &policy,
                         past_votes.len() as u32,
-                        voting_member_count,
                         &evaluation,
+                        &description_lines,
                         db_referendum.has_coi,
                         &feedback,
                     )
@@ -184,8 +161,9 @@ impl TelegramBot {
         } else {
             "No CoI reported. DV delegation exercised."
         };
-        message = format!(
-            "{message}\n{coi_message}\nhttps://{}.subscan.io/extrinsic/{}-{}",
+        let mut message = format!(
+            "{}\n{coi_message}\nhttps://{}.subscan.io/extrinsic/{}-{}",
+            description_lines.join("\n"),
             chain.chain.to_lowercase(),
             block_number,
             extrinsic_index,

@@ -4,7 +4,7 @@ use crate::command::util::{
     require_subsquare_referendum, require_thread,
 };
 use crate::TelegramBot;
-use pdao_types::governance::policy::{Policy, VoteCounts};
+use pdao_types::governance::policy::Policy;
 use pdao_types::governance::ReferendumStatus;
 use pdao_types::substrate::chain::Chain;
 
@@ -34,7 +34,7 @@ impl TelegramBot {
                 .await?;
 
         let policy = Policy::policy_for_track(&db_referendum.track);
-        let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
+        let vote_counts = get_vote_counts(voting_member_count, &opensquare_votes);
         let block_number = subsquare_referendum.state.block.number;
         let maybe_blocks_left = match subsquare_referendum.state.status {
             ReferendumStatus::Deciding => {
@@ -94,23 +94,16 @@ impl TelegramBot {
                 if db_referendum.preimage_exists {
                     "📝 Preimage exists"
                 } else {
-                    "⚪ No preimage"
+                    "⚠️ No preimage"
                 }
             )
         }
-        message = format!("{message}\n{voting_member_count} available members.");
-        message = format!("{message}\n🟢 {aye_count} • 🔴 {nay_count} • ⚪️ {abstain_count}");
 
-        let (_, description_lines) = policy.evaluate(VoteCounts::new(
-            voting_member_count,
-            aye_count,
-            nay_count,
-            abstain_count,
-        ));
-        message = format!("{message}\n\n{}", description_lines.join("\n"));
+        let (_, description_lines) = policy.evaluate(&vote_counts);
+        message = format!("{message}\n{}", description_lines.join("\n"));
 
         if opensquare_referendum.status.to_lowercase() != "active" {
-            message = format!("{message}\n\nMirror referendum has been terminated.");
+            message = format!("{message}\n\nMirror referendum is terminated.");
         }
         self.telegram_client
             .send_message(chat_id, Some(thread_id), &message)

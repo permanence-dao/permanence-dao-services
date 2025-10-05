@@ -3,7 +3,7 @@ use crate::command::util::{
     require_opensquare_cid, require_opensquare_votes, require_subsquare_referendum, require_thread,
 };
 use crate::TelegramBot;
-use pdao_types::governance::policy::{Policy, PolicyEvaluation, VoteCounts};
+use pdao_types::governance::policy::{Policy, PolicyEvaluation};
 use pdao_types::substrate::chain::Chain;
 
 impl TelegramBot {
@@ -52,14 +52,9 @@ impl TelegramBot {
                 .await?;
             return Ok(());
         }
-        let (aye_count, nay_count, abstain_count) = get_vote_counts(&opensquare_votes);
+        let vote_counts = get_vote_counts(voting_member_count, &opensquare_votes);
         let voting_policy = Policy::policy_for_track(&db_referendum.track);
-        let (evaluation, _) = voting_policy.evaluate(VoteCounts::new(
-            voting_member_count,
-            aye_count,
-            nay_count,
-            abstain_count,
-        ));
+        let (evaluation, _) = voting_policy.evaluate(&vote_counts);
         if let PolicyEvaluation::ParticipationNotMet {
             participation_threshold,
             ..

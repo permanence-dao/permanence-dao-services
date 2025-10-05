@@ -5,6 +5,7 @@ use pdao_subsquare_client::SubSquareClient;
 use pdao_types::governance::opensquare::{
     OpenSquareReferendum, OpenSquareReferendumVote, OpenSquareVote,
 };
+use pdao_types::governance::policy::VoteCounts;
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::governance::{Referendum, ReferendumStatus};
 use pdao_types::substrate::account_id::AccountId;
@@ -135,7 +136,7 @@ pub(super) fn require_subsquare_referendum_active(
     }
 }
 
-pub(super) fn get_vote_counts(votes: &[OpenSquareReferendumVote]) -> (u32, u32, u32) {
+pub(super) fn get_vote_counts(member_count: u32, votes: &[OpenSquareReferendumVote]) -> VoteCounts {
     let mut aye_count = 0;
     let mut nay_count = 0;
     let mut abstain_count = 0;
@@ -148,7 +149,7 @@ pub(super) fn get_vote_counts(votes: &[OpenSquareReferendumVote]) -> (u32, u32, 
             abstain_count += 1;
         }
     }
-    (aye_count, nay_count, abstain_count)
+    VoteCounts::new(member_count, aye_count, nay_count, abstain_count)
 }
 
 pub(super) fn require_voting_admin(username: &str) -> anyhow::Result<()> {

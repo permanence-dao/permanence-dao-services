@@ -170,12 +170,12 @@ impl Policy {
         }
     }
 
-    pub fn evaluate(&self, vote_counts: VoteCounts) -> (PolicyEvaluation, Vec<String>) {
+    pub fn evaluate(&self, vote_counts: &VoteCounts) -> (PolicyEvaluation, Vec<String>) {
         let participation_percent =
             (vote_counts.participation() as f32) * 100.0 / (vote_counts.members as f32);
         let simple_majority_threshold = 50.0 * (vote_counts.participation() as f32) / 100.0;
-        let majority_nominator = self.majority_nominator.get(&vote_counts) as f32;
-        let majority_denominator = self.majority_denominator.get(&vote_counts) as f32;
+        let majority_nominator = self.majority_nominator.get(vote_counts) as f32;
+        let majority_denominator = self.majority_denominator.get(vote_counts) as f32;
         let non_aye_percent = (vote_counts.ayes + vote_counts.abstains) as f32 * 100.0
             / vote_counts.participation() as f32;
         let majority_percent = majority_nominator * 100.0 / majority_denominator;
@@ -184,8 +184,13 @@ impl Policy {
         let mut description_lines = Vec::new();
 
         description_lines.push("```".to_string());
-        description_lines.push(self.track.name().to_string());
+        description_lines.push(self.track.name().to_uppercase());
         description_lines.push("-".repeat(self.track.name().len()));
+        description_lines.push(format!("{} available members", vote_counts.members));
+        description_lines.push(format!(
+            "🟢 {} • 🔴 {} • ⚪️ {}",
+            vote_counts.ayes, vote_counts.nays, vote_counts.abstains
+        ));
         match &self.participation_requirement {
             ParticipationRequirement::AbstainBeforePercent(comparison) => {
                 if !comparison.holds(participation_percent) {
@@ -198,7 +203,7 @@ impl Policy {
                     description_lines.push("```".to_string());
                     return (
                         PolicyEvaluation::AbstainThresholdNotMet {
-                            vote_counts,
+                            vote_counts: *vote_counts,
                             abstain_threshold: (vote_counts.members as f32)
                                 * comparison.threshold_rate()
                                 / 100.0,
@@ -224,7 +229,7 @@ impl Policy {
                     description_lines.push("```".to_string());
                     return (
                         PolicyEvaluation::ParticipationNotMet {
-                            vote_counts,
+                            vote_counts: *vote_counts,
                             participation_threshold: (vote_counts.members as f32)
                                 * comparison.threshold_rate()
                                 / 100.0,
@@ -247,7 +252,7 @@ impl Policy {
             description_lines.push("```".to_string());
             return (
                 PolicyEvaluation::MajorityAbstain {
-                    vote_counts,
+                    vote_counts: *vote_counts,
                     majority_threshold: simple_majority_threshold,
                 },
                 description_lines,
@@ -259,7 +264,9 @@ impl Policy {
             description_lines.push("⚪ ABSTAIN".to_string());
             description_lines.push("```".to_string());
             return (
-                PolicyEvaluation::AyeEqualsNayAbstain { vote_counts },
+                PolicyEvaluation::AyeEqualsNayAbstain {
+                    vote_counts: *vote_counts,
+                },
                 description_lines,
             );
         }
@@ -278,7 +285,7 @@ impl Policy {
             description_lines.push("```".to_string());
             return (
                 PolicyEvaluation::Aye {
-                    vote_counts,
+                    vote_counts: *vote_counts,
                     majority_threshold,
                 },
                 description_lines,
@@ -305,7 +312,7 @@ impl Policy {
             description_lines.push("```".to_string());
             return (
                 PolicyEvaluation::AyeAbstainMajorityAbstain {
-                    vote_counts,
+                    vote_counts: *vote_counts,
                     majority_threshold: self.majority_comparison.threshold_rate()
                         * vote_counts.participation() as f32
                         / 100.0,
@@ -318,7 +325,7 @@ impl Policy {
         description_lines.push("```".to_string());
         (
             PolicyEvaluation::Nay {
-                vote_counts,
+                vote_counts: *vote_counts,
                 majority_threshold,
             },
             description_lines,
@@ -417,83 +424,83 @@ mod tests {
     fn test_small_tipper() {
         let policy = Policy::policy_for_track(&Track::SmallTipper);
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 0, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 0, 0)).0,
             PolicyEvaluation::AbstainThresholdNotMet {
                 vote_counts: VoteCounts::new(8, 1, 0, 0),
                 abstain_threshold: 2.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 0, 1, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 0, 1, 0)).0,
             PolicyEvaluation::AbstainThresholdNotMet {
                 vote_counts: VoteCounts::new(8, 0, 1, 0),
                 abstain_threshold: 2.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 0, 0, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 0, 0, 1)).0,
             PolicyEvaluation::AbstainThresholdNotMet {
                 vote_counts: VoteCounts::new(8, 0, 0, 1),
                 abstain_threshold: 2.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 1, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 1, 0)).0,
             PolicyEvaluation::AyeEqualsNayAbstain {
                 vote_counts: VoteCounts::new(8, 1, 1, 0),
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 1, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 1, 1)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 1, 1),
                 majority_threshold: 1.5,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 1, 3)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 1, 3)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 2, 1, 3),
                 majority_threshold: 1.5,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 2, 3)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 2, 3)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 2, 2, 3),
                 majority_threshold: 3.5,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 3, 3)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 3, 3)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 2, 3, 3),
                 majority_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 3, 3)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 3, 3)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 3, 3),
                 majority_threshold: 3.5,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 3, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 3, 2)).0,
             PolicyEvaluation::Nay {
                 vote_counts: VoteCounts::new(8, 1, 3, 2),
                 majority_threshold: 2.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 3, 4)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 3, 4)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 3, 4),
                 majority_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 4, 3, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 4, 3, 0)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 4, 3, 0),
                 majority_threshold: 3.5,
@@ -505,84 +512,84 @@ mod tests {
     fn test_medium_spender() {
         let policy = Policy::policy_for_track(&Track::MediumSpender);
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 0, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 0, 0)).0,
             PolicyEvaluation::ParticipationNotMet {
                 vote_counts: VoteCounts::new(8, 1, 0, 0),
                 participation_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 1, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 1, 1)).0,
             PolicyEvaluation::ParticipationNotMet {
                 vote_counts: VoteCounts::new(8, 1, 1, 1),
                 participation_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 1, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 1, 2)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 1, 2),
                 majority_threshold: 2.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 1, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 1, 2)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 2, 1, 2),
                 majority_threshold: 2.5,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 3, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 3, 2)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 2, 3, 2),
                 majority_threshold: 3.5,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 4, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 4, 2)).0,
             PolicyEvaluation::Nay {
                 vote_counts: VoteCounts::new(8, 2, 4, 2),
                 majority_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 3, 4)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 3, 4)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 3, 4),
                 majority_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 4, 3, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 4, 3, 1)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 4, 3, 1),
                 majority_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 4, 2, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 4, 2, 1)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 4, 2, 1),
                 majority_threshold: 3.5,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 5, 3, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 5, 3, 0)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 5, 3, 0),
                 majority_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 4, 3, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 4, 3, 0)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 4, 3, 0),
                 majority_threshold: 3.5,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 4, 3, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 4, 3, 1)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 4, 3, 1),
                 majority_threshold: 4.0,
@@ -594,105 +601,105 @@ mod tests {
     fn test_big_spender() {
         let policy = Policy::policy_for_track(&Track::BigSpender);
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 0, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 0, 0)).0,
             PolicyEvaluation::ParticipationNotMet {
                 vote_counts: VoteCounts::new(8, 1, 0, 0),
                 participation_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 1, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 1, 1)).0,
             PolicyEvaluation::ParticipationNotMet {
                 vote_counts: VoteCounts::new(8, 1, 1, 1),
                 participation_threshold: 4.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 1, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 1, 2)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 1, 2),
                 majority_threshold: 2.4,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 3, 1, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 3, 1, 0)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 3, 1, 0),
                 majority_threshold: 2.4,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 1, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 1, 1)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 2, 1, 1),
                 majority_threshold: 2.4,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 1, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 1, 2)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 2, 1, 2),
                 majority_threshold: 3.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 2, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 2, 2)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 2, 2, 2),
                 majority_threshold: 3.6,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 3, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 3, 1)).0,
             PolicyEvaluation::Nay {
                 vote_counts: VoteCounts::new(8, 2, 3, 1),
                 majority_threshold: 3.6,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 3, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 3, 2)).0,
             PolicyEvaluation::Nay {
                 vote_counts: VoteCounts::new(8, 2, 3, 2),
                 majority_threshold: 4.2,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 4, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 4, 2)).0,
             PolicyEvaluation::Nay {
                 vote_counts: VoteCounts::new(8, 2, 4, 2),
                 majority_threshold: 4.8,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 2, 1, 3)).0,
+            policy.evaluate(&VoteCounts::new(8, 2, 1, 3)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 2, 1, 3),
                 majority_threshold: 3.6,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 1, 4)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 1, 4)).0,
             PolicyEvaluation::MajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 1, 4),
                 majority_threshold: 3.0,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 3, 4)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 3, 4)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 3, 4),
                 majority_threshold: 4.8,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 4, 0, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 4, 0, 0)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 4, 0, 0),
                 majority_threshold: 2.4,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 1, 3, 4)).0,
+            policy.evaluate(&VoteCounts::new(8, 1, 3, 4)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 1, 3, 4),
                 majority_threshold: 4.8,
@@ -704,21 +711,21 @@ mod tests {
     fn test_root() {
         let policy = Policy::policy_for_track(&Track::Root);
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 5, 3, 0)).0,
+            policy.evaluate(&VoteCounts::new(8, 5, 3, 0)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 5, 3, 0),
                 majority_threshold: 4.8,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 5, 2, 1)).0,
+            policy.evaluate(&VoteCounts::new(8, 5, 2, 1)).0,
             PolicyEvaluation::Aye {
                 vote_counts: VoteCounts::new(8, 5, 2, 1),
                 majority_threshold: 4.8,
             },
         );
         assert_eq!(
-            policy.evaluate(VoteCounts::new(8, 4, 2, 2)).0,
+            policy.evaluate(&VoteCounts::new(8, 4, 2, 2)).0,
             PolicyEvaluation::AyeAbstainMajorityAbstain {
                 vote_counts: VoteCounts::new(8, 4, 2, 2),
                 majority_threshold: 4.8,
