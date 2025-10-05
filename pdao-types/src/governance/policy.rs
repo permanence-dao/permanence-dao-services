@@ -195,7 +195,7 @@ impl Policy {
             ParticipationRequirement::AbstainBeforePercent(comparison) => {
                 if !comparison.holds(participation_percent) {
                     description_lines.push(format!(
-                        "▶️ Abstain before {}{:.1}% participation.",
+                        "▶️ Abstain before {}{:.1}% participation",
                         comparison.symbol(),
                         comparison.threshold_rate(),
                     ));
@@ -212,7 +212,7 @@ impl Policy {
                     );
                 } else {
                     description_lines.push(format!(
-                        "✓ {}{:.1}% required participation met.",
+                        "✓ {}{:.1}% required participation met",
                         comparison.symbol(),
                         comparison.threshold_rate(),
                     ));
@@ -221,7 +221,7 @@ impl Policy {
             ParticipationRequirement::NoVoteBeforePercent(comparison) => {
                 if !comparison.holds(participation_percent) {
                     description_lines.push(format!(
-                        "▶ No vote before {}{:.1}% participation.",
+                        "▶ No vote before {}{:.1}% participation",
                         comparison.symbol(),
                         comparison.threshold_rate(),
                     ));
@@ -238,7 +238,7 @@ impl Policy {
                     );
                 } else {
                     description_lines.push(format!(
-                        "✓ {}{:.1}% required participation met.",
+                        "✓ {}{:.1}% required participation met",
                         comparison.symbol(),
                         comparison.threshold_rate(),
                     ));
@@ -247,7 +247,7 @@ impl Policy {
         }
 
         if (vote_counts.abstains as f32) > simple_majority_threshold {
-            description_lines.push("▶ Majority of all votes is abstain.".to_string());
+            description_lines.push("▶ Majority of all votes is abstain".to_string());
             description_lines.push("⚪ ABSTAIN".to_string());
             description_lines.push("```".to_string());
             return (
@@ -260,7 +260,7 @@ impl Policy {
         }
 
         if vote_counts.abstains == 0 && (vote_counts.ayes == vote_counts.nays) {
-            description_lines.push("▶ Ayes equal nays with no abstains.".to_string());
+            description_lines.push("▶ Ayes equal nays with no abstains".to_string());
             description_lines.push("⚪ ABSTAIN".to_string());
             description_lines.push("```".to_string());
             return (
@@ -273,7 +273,7 @@ impl Policy {
 
         if self.majority_comparison.holds(majority_percent) {
             description_lines.push(format!(
-                "▶ Ayes {}{:.1}% of {} votes.",
+                "▶ Ayes {}{:.1}% of {} votes",
                 self.majority_comparison.symbol(),
                 self.majority_comparison.threshold_rate(),
                 match self.majority_denominator {
@@ -292,7 +292,7 @@ impl Policy {
             );
         } else {
             description_lines.push(format!(
-                "✘ Ayes {}{:.1}% of {} votes.",
+                "✘ Ayes {}{:.1}% of {} votes",
                 self.majority_comparison.negative_symbol(),
                 self.majority_comparison.threshold_rate(),
                 match self.majority_denominator {
@@ -304,7 +304,7 @@ impl Policy {
 
         if self.majority_comparison.holds(non_aye_percent) {
             description_lines.push(format!(
-                "▶ Ayes and abstains are {}{:.1}% of all votes.",
+                "▶ Ayes and abstains are {}{:.1}% of all votes",
                 self.majority_comparison.symbol(),
                 self.majority_comparison.threshold_rate(),
             ));
@@ -320,7 +320,7 @@ impl Policy {
                 description_lines,
             );
         }
-        description_lines.push("▶ Aye/abstain conditions not met.".to_string());
+        description_lines.push("▶ Aye/abstain conditions not met".to_string());
         description_lines.push("🔴 NAY".to_string());
         description_lines.push("```".to_string());
         (
