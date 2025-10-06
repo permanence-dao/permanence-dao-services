@@ -114,7 +114,7 @@ impl TelegramBot {
                 db_referendum.has_coi,
                 None,
                 &format!("V{current_vote_count}"),
-                "🗳",
+                db_referendum.status.get_status_icon(),
             )
             .await?;
         self.opensquare_client

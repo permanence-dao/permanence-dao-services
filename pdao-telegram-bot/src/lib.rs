@@ -307,6 +307,21 @@ impl TelegramBot {
                     true,
                 )
                 .await?;
+            let vote_count = self
+                .postgres
+                .get_referendum_vote_count(db_referendum.id)
+                .await?;
+            self.telegram_client
+                .update_referendum_topic_name(
+                    db_referendum.telegram_chat_id,
+                    db_referendum.telegram_topic_id,
+                    title.as_deref().unwrap_or("N/A"),
+                    db_referendum.has_coi,
+                    None,
+                    &format!("V{vote_count}"),
+                    db_referendum.status.get_status_icon(),
+                )
+                .await?;
         }
         Ok(())
     }
@@ -378,7 +393,7 @@ impl TelegramBot {
                     db_referendum.has_coi,
                     Some(&subsquare_referendum.state.status.to_string().to_uppercase()),
                     &format!("V{current_vote_count}"),
-                    "✅",
+                    db_referendum.status.get_status_icon(),
                 )
                 .await?;
         }

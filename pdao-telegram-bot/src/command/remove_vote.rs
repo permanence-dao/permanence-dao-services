@@ -72,7 +72,7 @@ impl TelegramBot {
                 db_referendum.has_coi,
                 None,
                 "VR",
-                "🗳",
+                db_referendum.status.get_status_icon(),
             )
             .await?;
         Ok(())

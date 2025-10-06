@@ -193,7 +193,7 @@ impl TelegramBot {
                 db_referendum.has_coi,
                 None,
                 &format!("V{}", past_votes.len() + 1),
-                "🗳",
+                db_referendum.status.get_status_icon(),
             )
             .await?;
         self.telegram_client

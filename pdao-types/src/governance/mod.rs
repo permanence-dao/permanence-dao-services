@@ -28,6 +28,14 @@ pub enum ReferendumStatus {
 }
 
 impl ReferendumStatus {
+    pub fn get_status_icon(&self) -> &str {
+        if self.is_ongoing() {
+            "✅"
+        } else {
+            "🗳"
+        }
+    }
+
     pub fn get_icon(&self) -> &str {
         match self {
             ReferendumStatus::Confirming => "🟢",

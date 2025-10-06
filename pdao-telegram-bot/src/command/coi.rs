@@ -62,7 +62,7 @@ impl TelegramBot {
                 has_coi,
                 None,
                 &format!("V{vote_count}"),
-                "🗳",
+                db_referendum.status.get_status_icon(),
             )
             .await?;
         let message = if has_coi {
