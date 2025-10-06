@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use pdao_config::Config;
 use pdao_service::Service;
 
-use crate::command::util::get_vote_counts;
+use crate::command::util::{get_vote_counts, require_subsquare_referendum};
 use pdao_openai_client::OpenAIClient;
 use pdao_opensquare_client::OpenSquareClient;
 use pdao_persistence::postgres::PostgreSQLStorage;
@@ -42,6 +42,12 @@ fn get_vote_name<'a>(vote: Option<bool>) -> &'a str {
     } else {
         "ABSTAIN"
     }
+}
+
+fn vote_change_is_positive(old_vote: Option<bool>, new_vote: Option<bool>) -> bool {
+    let old_vote = old_vote.map(|v| if v { 1 } else { -1 }).unwrap_or(0);
+    let new_vote = new_vote.map(|v| if v { 1 } else { -1 }).unwrap_or(0);
+    new_vote > old_vote
 }
 
 pub struct TelegramBot {
@@ -704,7 +710,27 @@ impl TelegramBot {
                 let previous_vote = get_vote_name(last_vote.vote);
                 let new_vote = get_vote_name(evaluation.simplify()?);
                 if last_vote.vote != evaluation.simplify()? {
+                    feedback.push(format!("• Outcome changed {previous_vote} -> {new_vote}."));
                     log::info!("Outcome changed {previous_vote} -> {new_vote}.");
+                    let subsquare_referendum = require_subsquare_referendum(
+                        &self.subsquare_client,
+                        chain,
+                        db_referendum.index,
+                    )
+                    .await?;
+                    if subsquare_referendum.state.status == ReferendumStatus::Confirming
+                        && !vote_change_is_positive(last_vote.vote, evaluation.simplify()?)
+                    {
+                        feedback.push(
+                            "⚠️  Cannot downvote while a referendum is in confirmation."
+                                .to_string(),
+                        );
+                        log::info!("⚠️  Referendum confirming. Cannot downvote.");
+                    } else {
+                        feedback.push(format!("▶ Submitting next vote as {new_vote}."));
+                        log::info!("▶ Submitting next vote as {new_vote}.");
+                        submit_vote = true;
+                    }
                 } else {
                     let vote = get_vote_name(last_vote.vote);
                     feedback.push(format!("• Outcome is still {vote}."));
@@ -733,10 +759,25 @@ impl TelegramBot {
                 log::info!("{message}");
                 feedback.push(message);
             } else {
-                submit_vote = true;
                 let vote = get_vote_name(evaluation.simplify()?);
-                feedback.push(format!("▶ Submitting first vote as {vote}."));
-                log::info!("▶ Submitting first vote as {vote}.");
+                let subsquare_referendum = require_subsquare_referendum(
+                    &self.subsquare_client,
+                    chain,
+                    db_referendum.index,
+                )
+                .await?;
+                if subsquare_referendum.state.status == ReferendumStatus::Confirming
+                    && !evaluation.simplify()?.unwrap_or(true)
+                {
+                    feedback.push(
+                        "⚠️  Cannot vote nay while a referendum is in confirmation.".to_string(),
+                    );
+                    log::info!("⚠️  Cannot vote nay while a referendum is in confirmation.");
+                } else {
+                    feedback.push(format!("▶ Submitting first vote as {vote}."));
+                    log::info!("▶ Submitting first vote as {vote}.");
+                    submit_vote = true;
+                }
             }
             if change_count > 0 {
                 self.telegram_client

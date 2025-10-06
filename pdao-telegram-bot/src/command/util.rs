@@ -22,7 +22,7 @@ pub(super) fn require_thread(thread_id: Option<i32>) -> anyhow::Result<i32> {
     }
 }
 
-pub(super) async fn require_subsquare_referendum(
+pub async fn require_subsquare_referendum(
     subsquare_client: &SubSquareClient,
     chain: &Chain,
     referendum_index: u32,
