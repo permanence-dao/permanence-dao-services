@@ -774,8 +774,7 @@ impl Service for TelegramBot {
                 tokio::time::sleep(std::time::Duration::from_secs(CONFIG.voter.sleep_seconds))
                     .await;
             }
-        })
-        .await?;
+        });
 
         tokio::spawn(async move {
             let polkadot = Chain::polkadot();
