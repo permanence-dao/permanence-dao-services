@@ -169,7 +169,8 @@ impl TelegramBot {
             "No CoI reported. DV delegation exercised."
         };
         let mut message = format!(
-            "{}\n{coi_message}\nhttps://{}.subscan.io/extrinsic/{}-{}",
+            "Vote #{} submitted.\n{}\n{coi_message}\nhttps://{}.subscan.io/extrinsic/{}-{}",
+            past_votes.len(),
             description_lines.join("\n"),
             chain.chain.to_lowercase(),
             block_number,

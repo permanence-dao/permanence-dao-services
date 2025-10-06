@@ -756,6 +756,12 @@ impl TelegramBot {
                     true,
                 )
                 .await?;
+                self.process_notify_command(
+                    db_referendum.telegram_chat_id,
+                    Some(db_referendum.telegram_topic_id),
+                    &CONFIG.voter.voting_admin_usernames,
+                )
+                .await?;
             }
         }
         Ok(())
