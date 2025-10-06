@@ -170,7 +170,7 @@ impl TelegramBot {
         };
         let mut message = format!(
             "Vote #{} submitted.\n{}\n{coi_message}\nhttps://{}.subscan.io/extrinsic/{}-{}",
-            past_votes.len(),
+            past_votes.len() + 1,
             description_lines.join("\n"),
             chain.chain.to_lowercase(),
             block_number,
