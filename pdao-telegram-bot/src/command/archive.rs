@@ -46,7 +46,12 @@ impl TelegramBot {
             stdout
         } else {
             self.telegram_client
-                .send_message(chat_id, Some(thread_id), "Error while archiving topic.")
+                .send_message(
+                    chat_id,
+                    Some(thread_id),
+                    "Error while archiving topic.",
+                    true,
+                )
                 .await?;
             return Ok(());
         };

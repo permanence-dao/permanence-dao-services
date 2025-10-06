@@ -15,6 +15,7 @@ impl TelegramBot {
                     chat_id,
                     thread_id,
                     &format!("You are already on leave, @{username}."),
+                    true,
                 )
                 .await?;
             return Ok(());
@@ -25,6 +26,7 @@ impl TelegramBot {
                 chat_id,
                 thread_id,
                 &format!("Happy holidays, @{username}! See you soon."),
+                true,
             )
             .await?;
         Ok(())

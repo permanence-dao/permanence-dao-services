@@ -2,6 +2,7 @@ use sp_core::crypto::Ss58AddressFormat;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+#[derive(Clone, Debug)]
 pub struct Chain {
     pub id: u32,
     pub chain: String,

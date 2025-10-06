@@ -1,7 +1,7 @@
 use crate::command::util::{
-    require_db_referendum, require_db_referendum_is_active, require_opensquare_cid,
-    require_opensquare_referendum, require_subsquare_referendum,
-    require_subsquare_referendum_active, require_thread, require_voting_admin,
+    require_db_referendum, require_db_referendum_is_active, require_opensquare_referendum,
+    require_subsquare_referendum, require_subsquare_referendum_active, require_thread,
+    require_voting_admin,
 };
 use crate::TelegramBot;
 use pdao_types::substrate::chain::Chain;
@@ -24,6 +24,7 @@ impl TelegramBot {
                     chat_id,
                     Some(thread_id),
                     "Referendum has already been marked for conflict of interest.",
+                    true,
                 )
                 .await?;
             return Ok(());
@@ -33,6 +34,7 @@ impl TelegramBot {
                     chat_id,
                     Some(thread_id),
                     "Referendum has not been marked for conflict of interest.",
+                    true,
                 )
                 .await?;
             return Ok(());
@@ -42,9 +44,9 @@ impl TelegramBot {
             require_subsquare_referendum(&self.subsquare_client, &chain, db_referendum.index)
                 .await?;
         require_subsquare_referendum_active(&subsquare_referendum)?;
-        let opensquare_cid = require_opensquare_cid(&db_referendum)?;
         let opensquare_referendum =
-            require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
+            require_opensquare_referendum(&self.opensquare_client, &db_referendum.opensquare_cid)
+                .await?;
         let vote_count = self
             .postgres
             .get_referendum_vote_count(db_referendum.id)
@@ -69,7 +71,7 @@ impl TelegramBot {
             "Conlict of interest has been removed from the referendum.\nDV delegation account will vote normally on this referendum."
         };
         self.telegram_client
-            .send_message(chat_id, Some(thread_id), message)
+            .send_message(chat_id, Some(thread_id), message, true)
             .await?;
         Ok(())
     }

@@ -1,0 +1,1 @@
+DROP TABLE pdao_pending_member_vote CASCADE;

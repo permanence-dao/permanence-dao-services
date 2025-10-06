@@ -1,7 +1,7 @@
 use crate::command::util::{
-    require_db_referendum, require_db_referendum_is_active, require_opensquare_cid,
-    require_opensquare_referendum, require_subsquare_referendum,
-    require_subsquare_referendum_active, require_thread, require_voting_admin,
+    require_db_referendum, require_db_referendum_is_active, require_opensquare_referendum,
+    require_subsquare_referendum, require_subsquare_referendum_active, require_thread,
+    require_voting_admin,
 };
 use crate::TelegramBot;
 use pdao_types::substrate::chain::Chain;
@@ -19,18 +19,19 @@ impl TelegramBot {
         let db_referendum = require_db_referendum(&self.postgres, chat_id, thread_id).await?;
         require_db_referendum_is_active(&db_referendum)?;
         let chain = Chain::from_id(db_referendum.network_id);
-        let opensquare_cid = require_opensquare_cid(&db_referendum)?;
         let subsquare_referendum =
             require_subsquare_referendum(&self.subsquare_client, &chain, db_referendum.index)
                 .await?;
         require_subsquare_referendum_active(&subsquare_referendum)?;
         let opensquare_referendum =
-            require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
+            require_opensquare_referendum(&self.opensquare_client, &db_referendum.opensquare_cid)
+                .await?;
         self.telegram_client
             .send_message(
                 chat_id,
                 Some(thread_id),
                 "⚙️ Preparing the on-chain submission. Please give me some time.",
+                true,
             )
             .await?;
         log::info!(
@@ -117,10 +118,10 @@ impl TelegramBot {
             )
             .await?;
         self.opensquare_client
-            .make_appendant_on_proposal(&chain, opensquare_cid, &message)
+            .make_appendant_on_proposal(&chain, &db_referendum.opensquare_cid, &message)
             .await?;
         self.telegram_client
-            .send_message(chat_id, Some(thread_id), &message)
+            .send_message(chat_id, Some(thread_id), &message, true)
             .await?;
         Ok(())
     }

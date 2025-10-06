@@ -1,7 +1,7 @@
 use crate::command::util::{
-    require_db_referendum, require_db_referendum_is_active, require_opensquare_cid,
-    require_opensquare_referendum, require_subsquare_referendum,
-    require_subsquare_referendum_active, require_thread, require_voting_admin,
+    require_db_referendum, require_db_referendum_is_active, require_opensquare_referendum,
+    require_subsquare_referendum, require_subsquare_referendum_active, require_thread,
+    require_voting_admin,
 };
 use crate::TelegramBot;
 use pdao_types::substrate::chain::Chain;
@@ -25,13 +25,14 @@ impl TelegramBot {
                     chat_id,
                     Some(thread_id),
                     "No vote posted for this referendum yet, or the vote was removed.",
+                    true,
                 )
                 .await?;
             return Ok(());
         };
-        let opensquare_cid = require_opensquare_cid(&db_referendum)?;
         let opensquare_referendum =
-            require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
+            require_opensquare_referendum(&self.opensquare_client, &db_referendum.opensquare_cid)
+                .await?;
         let chain = Chain::from_id(db_referendum.network_id);
         let subsquare_referendum =
             require_subsquare_referendum(&self.subsquare_client, &chain, db_referendum.index)
@@ -42,6 +43,7 @@ impl TelegramBot {
                 chat_id,
                 Some(thread_id),
                 "⚙️ Removing the on-chain vote. Please give me some time.",
+                true,
             )
             .await?;
         let (_block_hash, block_number, extrinsic_index) =
@@ -57,10 +59,10 @@ impl TelegramBot {
             extrinsic_index
         );
         self.opensquare_client
-            .make_appendant_on_proposal(&chain, opensquare_cid, &message)
+            .make_appendant_on_proposal(&chain, &db_referendum.opensquare_cid, &message)
             .await?;
         self.telegram_client
-            .send_message(chat_id, Some(thread_id), &message)
+            .send_message(chat_id, Some(thread_id), &message, true)
             .await?;
         self.telegram_client
             .update_referendum_topic_name(

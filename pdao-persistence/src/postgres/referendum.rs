@@ -3,7 +3,6 @@ use pdao_types::governance::subsquare::SubSquareReferendum as OpensquareReferend
 use pdao_types::governance::track::Track;
 use pdao_types::governance::{Referendum, ReferendumStatus};
 use sqlx::FromRow;
-use std::str::FromStr;
 
 #[derive(Debug, FromRow)]
 struct ReferendumRow {
@@ -11,15 +10,15 @@ struct ReferendumRow {
     pub network_id: i32,
     pub track_id: i32,
     pub index: i32,
-    pub status: String,
+    pub status: ReferendumStatus,
     pub title: Option<String>,
     pub content: Option<String>,
     pub content_type: String,
     pub telegram_chat_id: i64,
     pub telegram_topic_id: i32,
     pub telegram_intro_message_id: i32,
-    pub opensquare_cid: Option<String>,
-    pub opensquare_post_uid: Option<String>,
+    pub opensquare_cid: String,
+    pub opensquare_post_uid: String,
     pub last_vote_id: Option<i32>,
     pub is_terminated: bool,
     pub has_coi: bool,
@@ -33,7 +32,7 @@ fn referendum_row_into_referendum(row: &ReferendumRow) -> anyhow::Result<Referen
         network_id: row.network_id as u32,
         track: Track::from_id(row.track_id as u16).unwrap(),
         index: row.index as u32,
-        status: ReferendumStatus::from_str(&row.status)?,
+        status: row.status,
         title: row.title.clone(),
         content: row.content.clone(),
         content_type: row.content_type.clone(),
@@ -73,7 +72,7 @@ impl PostgreSQLStorage {
             .bind(network_id as i32)
             .bind(referendum.track_id as i32)
             .bind(referendum.referendum_index as i32)
-            .bind(referendum.state.status.to_string())
+            .bind(referendum.state.status)
             .bind(&referendum.title)
             .bind(&referendum.content)
             .bind(&referendum.content_type)
@@ -86,6 +85,24 @@ impl PostgreSQLStorage {
             .fetch_one(&self.connection_pool)
             .await?;
         Ok(result.0)
+    }
+
+    pub async fn get_referendum_by_id(&self, id: u32) -> anyhow::Result<Option<Referendum>> {
+        let maybe_row: Option<ReferendumRow> = sqlx::query_as::<_, ReferendumRow>(
+            r#"
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived, preimage_exists
+            FROM pdao_referendum
+            WHERE id = $1
+            "#,
+        )
+            .bind(id as i32)
+            .fetch_optional(&self.connection_pool)
+            .await?;
+        if let Some(row) = maybe_row {
+            Ok(Some(referendum_row_into_referendum(&row)?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub async fn get_referendum_by_index(
@@ -109,6 +126,47 @@ impl PostgreSQLStorage {
         } else {
             Ok(None)
         }
+    }
+
+    pub async fn get_all_referenda(&self, network_id: u32) -> anyhow::Result<Vec<Referendum>> {
+        let rows: Vec<ReferendumRow> = sqlx::query_as::<_, ReferendumRow>(
+            r#"
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived, preimage_exists
+            FROM pdao_referendum
+            WHERE network_id = $1
+            "#,
+        )
+            .bind(network_id as i32)
+            .fetch_all(&self.connection_pool)
+            .await?;
+        let mut result = Vec::new();
+        for row in rows.iter() {
+            result.push(referendum_row_into_referendum(row)?);
+        }
+        Ok(result)
+    }
+
+    pub async fn get_referenda_by_statuses(
+        &self,
+        network_id: u32,
+        statuses: &[ReferendumStatus],
+    ) -> anyhow::Result<Vec<Referendum>> {
+        let rows: Vec<ReferendumRow> = sqlx::query_as::<_, ReferendumRow>(
+            r#"
+            SELECT id, network_id, track_id, index, status, title, content, content_type, telegram_chat_id, telegram_topic_id, telegram_intro_message_id, opensquare_cid, opensquare_post_uid, last_vote_id, is_terminated, has_coi, is_archived, preimage_exists
+            FROM pdao_referendum
+            WHERE network_id = $1 AND status = ANY ($2::text[])
+            "#,
+        )
+            .bind(network_id as i32)
+            .bind(statuses)
+            .fetch_all(&self.connection_pool)
+            .await?;
+        let mut result = Vec::new();
+        for row in rows.iter() {
+            result.push(referendum_row_into_referendum(row)?);
+        }
+        Ok(result)
     }
 
     pub async fn get_referendum_by_telegram_chat_and_thread_id(
@@ -198,7 +256,7 @@ impl PostgreSQLStorage {
             RETURNING id
             "#,
         )
-        .bind(referendum_status.to_string())
+        .bind(referendum_status)
         .bind(referendum_id as i32)
         .fetch_optional(&self.connection_pool)
         .await?;

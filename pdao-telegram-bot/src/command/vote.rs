@@ -1,8 +1,7 @@
 use crate::command::util::{
     get_vote_counts, require_db_referendum, require_db_referendum_is_active,
-    require_opensquare_cid, require_opensquare_referendum, require_opensquare_votes,
-    require_subsquare_referendum, require_subsquare_referendum_active, require_thread,
-    require_voting_admin,
+    require_opensquare_referendum, require_opensquare_votes, require_subsquare_referendum,
+    require_subsquare_referendum_active, require_thread, require_voting_admin,
 };
 use crate::TelegramBot;
 use pdao_types::governance::policy::Policy;
@@ -21,7 +20,6 @@ impl TelegramBot {
         let thread_id = require_thread(thread_id)?;
         let db_referendum = require_db_referendum(&self.postgres, chat_id, thread_id).await?;
         require_db_referendum_is_active(&db_referendum)?;
-        let opensquare_cid = require_opensquare_cid(&db_referendum)?;
         let chain = Chain::from_id(db_referendum.network_id);
         let voting_member_count = self.postgres.get_all_members(false).await?.len() as u32;
         let subsquare_referendum =
@@ -29,14 +27,18 @@ impl TelegramBot {
                 .await?;
         require_subsquare_referendum_active(&subsquare_referendum)?;
         let opensquare_referendum =
-            require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
+            require_opensquare_referendum(&self.opensquare_client, &db_referendum.opensquare_cid)
+                .await?;
         let member_account_ids = self
             .postgres
             .get_all_member_account_ids_for_chain(true, Chain::polkadot().id)
             .await?;
-        let opensquare_votes =
-            require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
-                .await?;
+        let opensquare_votes = require_opensquare_votes(
+            &self.opensquare_client,
+            &db_referendum.opensquare_cid,
+            &member_account_ids,
+        )
+        .await?;
         let policy = Policy::policy_for_track(&db_referendum.track);
         let vote_counts = get_vote_counts(voting_member_count, &opensquare_votes);
         let past_votes = self.postgres.get_referendum_votes(db_referendum.id).await?;
@@ -47,6 +49,7 @@ impl TelegramBot {
                 chat_id,
                 Some(thread_id),
                 "⚙️ Preparing the on-chain submission. Please give me some time.",
+                true,
             )
             .await?;
         log::info!(
@@ -90,7 +93,7 @@ impl TelegramBot {
                     .post_comment_reply(
                         &chain,
                         &subsquare_referendum,
-                        opensquare_cid,
+                        &db_referendum.opensquare_cid,
                         &first_vote_cid,
                         past_votes.len() as u32,
                         &evaluation,
@@ -106,7 +109,7 @@ impl TelegramBot {
                     .post_comment(
                         &chain,
                         &subsquare_referendum,
-                        opensquare_cid,
+                        &db_referendum.opensquare_cid,
                         past_votes.len() as u32,
                         &evaluation,
                         &description_lines,
@@ -149,10 +152,14 @@ impl TelegramBot {
                     db_referendum.id,
                     db_referendum.index,
                     &member_vote.address.to_ss58_check(),
+                    member_vote.get_vote(),
                     &member_vote.remark,
                 )
                 .await?;
         }
+        self.postgres
+            .delete_referendum_pending_member_votes(db_referendum.id)
+            .await?;
         self.postgres
             .set_referendum_last_vote_id(db_referendum.id, Some(vote_id as u32))
             .await?;
@@ -190,10 +197,10 @@ impl TelegramBot {
             )
             .await?;
         self.telegram_client
-            .send_message(chat_id, Some(thread_id), &message)
+            .send_message(chat_id, Some(thread_id), &message, true)
             .await?;
         self.opensquare_client
-            .make_appendant_on_proposal(&chain, opensquare_cid, &message)
+            .make_appendant_on_proposal(&chain, &db_referendum.opensquare_cid, &message)
             .await?;
         Ok(())
     }

@@ -1,14 +1,18 @@
 use crate::governance::track::Track;
+use crate::substrate::account_id::AccountId;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 pub mod opensquare;
 pub mod policy;
 pub mod subsquare;
 pub mod track;
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, sqlx::Type, EnumIter)]
+#[sqlx(type_name = "varchar")]
 pub enum ReferendumStatus {
     Confirming,
     Deciding,
@@ -54,6 +58,10 @@ impl ReferendumStatus {
             ReferendumStatus::Rejected => false,
             ReferendumStatus::Executed => false,
         }
+    }
+
+    pub fn get_ongoing() -> Vec<Self> {
+        Self::iter().filter(|status| status.is_ongoing()).collect()
     }
 
     pub fn requires_termination(&self) -> bool {
@@ -115,8 +123,8 @@ pub struct Referendum {
     pub telegram_chat_id: i64,
     pub telegram_topic_id: i32,
     pub telegram_intro_message_id: i32,
-    pub opensquare_cid: Option<String>,
-    pub opensquare_post_uid: Option<String>,
+    pub opensquare_cid: String,
+    pub opensquare_post_uid: String,
     pub last_vote_id: Option<u32>,
     pub is_terminated: bool,
     pub has_coi: bool,
@@ -142,4 +150,31 @@ pub struct Vote {
     pub subsquare_comment_index: Option<u32>,
     pub has_coi: bool,
     pub is_forced: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MemberVote {
+    pub id: u32,
+    pub vote_id: u32,
+    pub cid: String,
+    pub network_id: u32,
+    pub referendum_id: u32,
+    pub index: u32,
+    pub address: AccountId,
+    pub vote: Option<bool>,
+    pub feedback: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingMemberVote {
+    pub id: u32,
+    pub cid: String,
+    pub network_id: u32,
+    pub referendum_id: u32,
+    pub index: u32,
+    pub address: AccountId,
+    pub vote: Option<bool>,
+    pub feedback: String,
 }

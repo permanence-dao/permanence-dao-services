@@ -121,6 +121,7 @@ impl TelegramClient {
                 config.telegram.chat_id,
                 Some(create_topic_response.result.message_thread_id),
                 &message,
+                true,
             )
             .await?;
         log::info!(
@@ -140,6 +141,7 @@ impl TelegramClient {
         chat_id: i64,
         thread_id: Option<i32>,
         message: &str,
+        enable_notification: bool,
     ) -> anyhow::Result<MethodResponse<Message>> {
         let response = self
             .telegram_api
@@ -159,7 +161,7 @@ impl TelegramClient {
                     prefer_large_media: None,
                     show_above_text: None,
                 }),
-                disable_notification: None,
+                disable_notification: Some(!enable_notification),
                 protect_content: None,
                 allow_paid_broadcast: None,
                 message_effect_id: None,

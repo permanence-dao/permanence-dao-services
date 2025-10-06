@@ -15,13 +15,19 @@ impl TelegramBot {
                     chat_id,
                     thread_id,
                     &format!("You are not on leave, @{username}."),
+                    true,
                 )
                 .await?;
             return Ok(());
         }
         self.postgres.mark_member_return(member.id).await?;
         self.telegram_client
-            .send_message(chat_id, thread_id, &format!("Welcome back, @{username}!"))
+            .send_message(
+                chat_id,
+                thread_id,
+                &format!("Welcome back, @{username}!"),
+                true,
+            )
             .await?;
         Ok(())
     }

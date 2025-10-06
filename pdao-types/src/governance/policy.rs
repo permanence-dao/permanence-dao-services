@@ -414,6 +414,10 @@ impl PolicyEvaluation {
             PolicyEvaluation::Nay { .. } => Ok(Some(false)),
         }
     }
+
+    pub fn is_no_vote(&self) -> bool {
+        matches!(self, PolicyEvaluation::ParticipationNotMet { .. })
+    }
 }
 
 #[cfg(test)]

@@ -39,16 +39,6 @@ pub(super) async fn require_subsquare_referendum(
     }
 }
 
-pub(super) fn require_opensquare_cid(db_referendum: &Referendum) -> anyhow::Result<&str> {
-    if let Some(cid) = db_referendum.opensquare_cid.as_deref() {
-        Ok(cid)
-    } else {
-        Err(anyhow::Error::msg(
-            "OpenSquare CID not found in the database referendum record. Contact admin.",
-        ))
-    }
-}
-
 pub(super) async fn require_opensquare_referendum(
     opensquare_client: &OpenSquareClient,
     cid: &str,
@@ -136,7 +126,7 @@ pub(super) fn require_subsquare_referendum_active(
     }
 }
 
-pub(super) fn get_vote_counts(member_count: u32, votes: &[OpenSquareReferendumVote]) -> VoteCounts {
+pub fn get_vote_counts(member_count: u32, votes: &[OpenSquareReferendumVote]) -> VoteCounts {
     let mut aye_count = 0;
     let mut nay_count = 0;
     let mut abstain_count = 0;

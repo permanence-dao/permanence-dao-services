@@ -1,6 +1,6 @@
 use crate::command::util::{
-    require_db_referendum, require_opensquare_cid, require_opensquare_referendum,
-    require_opensquare_referendum_active, require_thread, require_voting_admin,
+    require_db_referendum, require_opensquare_referendum, require_opensquare_referendum_active,
+    require_thread, require_voting_admin,
 };
 use crate::TelegramBot;
 use pdao_types::substrate::chain::Chain;
@@ -18,12 +18,12 @@ impl TelegramBot {
         let thread_id = require_thread(thread_id)?;
         let db_referendum = require_db_referendum(&self.postgres, chat_id, thread_id).await?;
         let chain = Chain::from_id(db_referendum.network_id);
-        let opensquare_cid = require_opensquare_cid(&db_referendum)?;
         let opensquare_referendum =
-            require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
+            require_opensquare_referendum(&self.opensquare_client, &db_referendum.opensquare_cid)
+                .await?;
         require_opensquare_referendum_active(&opensquare_referendum)?;
         self.opensquare_client
-            .terminate_proposal(&chain, opensquare_cid)
+            .terminate_proposal(&chain, &db_referendum.opensquare_cid)
             .await?;
         self.postgres.terminate_referendum(db_referendum.id).await?;
         self.telegram_client
@@ -31,6 +31,7 @@ impl TelegramBot {
                 chat_id,
                 Some(thread_id),
                 "OpenSquare referendum terminated.",
+                true,
             )
             .await?;
         let current_vote_count = self

@@ -51,7 +51,7 @@ polkadot_proxy_account_seed_phrase = "seed_phrase"
 kusama_real_account_address = "address"
 kusama_dv_delegation_account_address = "address"
 kusama_proxy_account_seed_phrase = "seed_phrase"
-sleep_seconds = 1800
+sleep_seconds = 300
 min_referendum_id = 1200
 voting_policy_version = "v0.3"
 

@@ -68,6 +68,35 @@ pub enum OpenSquareVote {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenSquareIPFSReferendumVoteData {
+    #[serde(rename = "proposalCid")]
+    pub proposal_id: String,
+    pub choices: Vec<OpenSquareVote>,
+    pub remark: String,
+    pub timestamp: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenSquareIPFSReferendumVote {
+    pub data: OpenSquareIPFSReferendumVoteData,
+    pub address: AccountId,
+    pub signature: String,
+    pub version: String,
+}
+
+impl OpenSquareIPFSReferendumVote {
+    pub fn get_vote(&self) -> Option<bool> {
+        if self.data.choices.contains(&OpenSquareVote::Aye) {
+            Some(true)
+        } else if self.data.choices.contains(&OpenSquareVote::Nay) {
+            Some(false)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenSquareReferendumVote {
     #[serde(rename = "_id")]
     pub id: String,
@@ -78,6 +107,18 @@ pub struct OpenSquareReferendumVote {
     pub address: AccountId,
     pub choices: Vec<OpenSquareVote>,
     pub remark: String,
+}
+
+impl OpenSquareReferendumVote {
+    pub fn get_vote(&self) -> Option<bool> {
+        if self.choices.contains(&OpenSquareVote::Aye) {
+            Some(true)
+        } else if self.choices.contains(&OpenSquareVote::Nay) {
+            Some(false)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -10,5 +10,5 @@ pub mod notify;
 pub mod remove_vote;
 pub mod status;
 pub mod terminate;
-mod util;
+pub mod util;
 pub mod vote;

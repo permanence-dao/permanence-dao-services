@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS pdao_member_vote
     referendum_id INT NOT NULL,
     index         INT NOT NULL,
     address       VARCHAR(128) NOT NULL,
+    vote          BOOLEAN DEFAULT NULL,
     feedback      TEXT NOT NULL,
     created_at    TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     CONSTRAINT pda_member_vote_u_member_vote UNIQUE (vote_id, address),

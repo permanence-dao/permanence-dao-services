@@ -1,5 +1,7 @@
 use crate::postgres::PostgreSQLStorage;
-use pdao_types::governance::Vote;
+use pdao_types::governance::{MemberVote, PendingMemberVote, Vote};
+use pdao_types::substrate::account_id::AccountId;
+use std::str::FromStr;
 
 type VoteRecord = (
     i32,
@@ -19,6 +21,20 @@ type VoteRecord = (
     bool,
 );
 
+type MemberVoteRecord = (
+    i32,
+    i32,
+    String,
+    i32,
+    i32,
+    i32,
+    String,
+    Option<bool>,
+    String,
+);
+
+type PendingMemberVoteRecord = (i32, String, i32, i32, i32, String, Option<bool>, String);
+
 fn vote_record_into_vote(record: &VoteRecord) -> anyhow::Result<Vote> {
     Ok(Vote {
         id: record.0 as u32,
@@ -36,6 +52,35 @@ fn vote_record_into_vote(record: &VoteRecord) -> anyhow::Result<Vote> {
         subsquare_comment_index: record.12.map(|i| i as u32),
         has_coi: record.13,
         is_forced: record.14,
+    })
+}
+
+fn member_vote_record_into_member_vote(record: &MemberVoteRecord) -> anyhow::Result<MemberVote> {
+    Ok(MemberVote {
+        id: record.0 as u32,
+        vote_id: record.1 as u32,
+        cid: record.2.to_string(),
+        network_id: record.3 as u32,
+        referendum_id: record.4 as u32,
+        index: record.5 as u32,
+        address: AccountId::from_str(&record.6)?,
+        vote: record.7,
+        feedback: record.8.clone(),
+    })
+}
+
+fn pending_member_vote_record_into_pending_member_vote(
+    record: &PendingMemberVoteRecord,
+) -> anyhow::Result<PendingMemberVote> {
+    Ok(PendingMemberVote {
+        id: record.0 as u32,
+        cid: record.1.to_string(),
+        network_id: record.2 as u32,
+        referendum_id: record.3 as u32,
+        index: record.4 as u32,
+        address: AccountId::from_str(&record.5)?,
+        vote: record.6,
+        feedback: record.7.clone(),
     })
 }
 
@@ -94,6 +139,29 @@ impl PostgreSQLStorage {
         .fetch_optional(&self.connection_pool)
         .await?;
         Ok(maybe_result.map(|r| r.0))
+    }
+
+    pub async fn get_referendum_last_vote(
+        &self,
+        referendum_id: u32,
+    ) -> anyhow::Result<Option<Vote>> {
+        let db_vote: Option<VoteRecord> = sqlx::query_as(
+            r#"
+            SELECT id, network_id, referendum_id, index, block_hash, block_number, extrinsic_index, vote, balance, conviction, is_removed, subsquare_comment_cid, subsquare_comment_index, has_coi, is_forced
+            FROM pdao_vote
+            WHERE referendum_id = $1
+            ORDER BY id DESC
+            LIMIT 1
+            "#,
+        )
+            .bind(referendum_id as i32)
+            .fetch_optional(&self.connection_pool)
+            .await?;
+        if let Some(db_vote) = db_vote {
+            Ok(Some(vote_record_into_vote(&db_vote)?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub async fn get_referendum_votes(&self, referendum_id: u32) -> anyhow::Result<Vec<Vote>> {
@@ -156,13 +224,15 @@ impl PostgreSQLStorage {
         referendum_id: u32,
         referendum_index: u32,
         address: &str,
+        vote: Option<bool>,
         feedback: &str,
-    ) -> anyhow::Result<i32> {
-        let result: (i32,) = sqlx::query_as(
+    ) -> anyhow::Result<()> {
+        sqlx::query(
             r#"
-            INSERT INTO pdao_member_vote (vote_id, cid, network_id, referendum_id, index, address, feedback)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING id
+            INSERT INTO pdao_member_vote (vote_id, cid, network_id, referendum_id, index, address, vote, feedback)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT(vote_id, address) DO UPDATE
+            SET vote = EXCLUDED.vote, feedback = EXCLUDED.feedback
             "#,
         )
             .bind(vote_id as i32)
@@ -171,9 +241,121 @@ impl PostgreSQLStorage {
             .bind(referendum_id as i32)
             .bind(referendum_index as i32)
             .bind(address)
+            .bind(vote)
             .bind(feedback)
-            .fetch_one(&self.connection_pool)
+            .execute(&self.connection_pool)
             .await?;
-        Ok(result.0)
+        Ok(())
+    }
+
+    pub async fn get_member_votes(&self) -> anyhow::Result<Vec<MemberVote>> {
+        let db_member_votes: Vec<MemberVoteRecord> = sqlx::query_as(
+            r#"
+            SELECT id, vote_id, cid, network_id, referendum_id, index, address, vote, feedback
+            FROM pdao_member_vote
+            ORDER BY id ASC
+            "#,
+        )
+        .fetch_all(&self.connection_pool)
+        .await?;
+        let mut member_votes = Vec::new();
+        for db_member_vote in db_member_votes.iter() {
+            member_votes.push(member_vote_record_into_member_vote(db_member_vote)?);
+        }
+        Ok(member_votes)
+    }
+
+    pub async fn get_vote_member_votes(&self, vote_id: u32) -> anyhow::Result<Vec<MemberVote>> {
+        let db_member_votes: Vec<MemberVoteRecord> = sqlx::query_as(
+            r#"
+            SELECT id, vote_id, cid, network_id, referendum_id, index, address, vote, feedback
+            FROM pdao_member_vote
+            WHERE vote_id = $1
+            ORDER BY id ASC
+            "#,
+        )
+        .bind(vote_id as i32)
+        .fetch_all(&self.connection_pool)
+        .await?;
+        let mut member_votes = Vec::new();
+        for db_member_vote in db_member_votes.iter() {
+            member_votes.push(member_vote_record_into_member_vote(db_member_vote)?);
+        }
+        Ok(member_votes)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn save_pending_member_vote(
+        &self,
+        cid: &str,
+        network_id: u32,
+        referendum_id: u32,
+        referendum_index: u32,
+        address: &str,
+        vote: Option<bool>,
+        feedback: &str,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            r#"
+            INSERT INTO pdao_pending_member_vote (cid, network_id, referendum_id, index, address, vote, feedback)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT(referendum_id, address) DO UPDATE
+            SET cid = EXCLUDED.cid, vote = EXCLUDED.vote, feedback = EXCLUDED.feedback
+            RETURNING id
+            "#,
+        )
+            .bind(cid)
+            .bind(network_id as i32)
+            .bind(referendum_id as i32)
+            .bind(referendum_index as i32)
+            .bind(address)
+            .bind(vote)
+            .bind(feedback)
+            .execute(&self.connection_pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_referendum_pending_member_votes(
+        &self,
+        referendum_id: u32,
+    ) -> anyhow::Result<Vec<PendingMemberVote>> {
+        let db_pending_member_votes: Vec<PendingMemberVoteRecord> = sqlx::query_as(
+            r#"
+            SELECT id, cid, network_id, referendum_id, index, address, vote, feedback
+            FROM pdao_pending_member_vote
+            WHERE referendum_id = $1
+            ORDER BY id ASC
+            "#,
+        )
+        .bind(referendum_id as i32)
+        .fetch_all(&self.connection_pool)
+        .await?;
+        let mut pending_member_votes = Vec::new();
+        for db_pending_member_vote in db_pending_member_votes.iter() {
+            pending_member_votes.push(pending_member_vote_record_into_pending_member_vote(
+                db_pending_member_vote,
+            )?);
+        }
+        Ok(pending_member_votes)
+    }
+
+    pub async fn delete_pending_member_vote(&self, id: u32) -> anyhow::Result<bool> {
+        let delete_result = sqlx::query("DELETE FROM pdao_pending_member_vote WHERE id = $1")
+            .bind(id as i32)
+            .execute(&self.connection_pool)
+            .await?;
+        Ok(delete_result.rows_affected() == 1)
+    }
+
+    pub async fn delete_referendum_pending_member_votes(
+        &self,
+        referendum_id: u32,
+    ) -> anyhow::Result<()> {
+        sqlx::query("DELETE FROM pdao_pending_member_vote WHERE referendum_id = $1")
+            .bind(referendum_id as i32)
+            .execute(&self.connection_pool)
+            .await?;
+        Ok(())
     }
 }

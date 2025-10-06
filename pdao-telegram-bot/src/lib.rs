@@ -5,6 +5,7 @@ use lazy_static::lazy_static;
 use pdao_config::Config;
 use pdao_service::Service;
 
+use crate::command::util::get_vote_counts;
 use pdao_openai_client::OpenAIClient;
 use pdao_opensquare_client::OpenSquareClient;
 use pdao_persistence::postgres::PostgreSQLStorage;
@@ -12,6 +13,7 @@ use pdao_referendum_importer::{ReferendumImportError, ReferendumImporter};
 use pdao_subsquare_client::SubSquareClient;
 use pdao_substrate_client::SubstrateClient;
 use pdao_telegram_client::TelegramClient;
+use pdao_types::governance::policy::Policy;
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::governance::track::Track;
 use pdao_types::governance::{Referendum, ReferendumStatus};
@@ -28,6 +30,18 @@ lazy_static! {
         Regex::new(r"^/([a-zA-Z0-9_]+[@a-zA-Z0-9_]?)(\s+[a-zA-Z0-9_-]+)*").unwrap();
     static ref CMD_ARG_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap();
     static ref SPLITTER_REGEX: Regex = Regex::new(r"\s+").unwrap();
+}
+
+fn get_vote_name<'a>(vote: Option<bool>) -> &'a str {
+    if let Some(vote) = vote {
+        if vote {
+            "AYE"
+        } else {
+            "NAY"
+        }
+    } else {
+        "ABSTAIN"
+    }
 }
 
 pub struct TelegramBot {
@@ -170,6 +184,7 @@ impl TelegramBot {
                   chat_id,
                   thread_id,
                   &response,
+                  true,
               ).await?;
           } */
         Ok(())
@@ -206,7 +221,7 @@ impl TelegramBot {
                     log::error!("{message}");
                     let _ = self
                         .telegram_client
-                        .send_message(CONFIG.telegram.chat_id, thread_id, &message)
+                        .send_message(CONFIG.telegram.chat_id, thread_id, &message, true)
                         .await;
                 }
             }
@@ -246,17 +261,20 @@ impl TelegramBot {
         self.postgres
             .set_referendum_preimage_exists(db_referendum.id, preimage_exists)
             .await?;
-        self.telegram_client
-            .send_message(
-                db_referendum.telegram_chat_id,
-                Some(db_referendum.telegram_topic_id),
-                if preimage_exists {
-                    "📝 Preimage uploaded."
-                } else {
-                    "❌ Preimage removed!"
-                },
-            )
-            .await?;
+        if !db_referendum.is_archived {
+            self.telegram_client
+                .send_message(
+                    db_referendum.telegram_chat_id,
+                    Some(db_referendum.telegram_topic_id),
+                    if preimage_exists {
+                        "📝 Preimage uploaded."
+                    } else {
+                        "❌ Preimage removed!"
+                    },
+                    true,
+                )
+                .await?;
+        }
         Ok(())
     }
 
@@ -275,18 +293,21 @@ impl TelegramBot {
         self.postgres
             .update_referendum_title(db_referendum.id, title)
             .await?;
-        let message = if let Some(title) = title {
-            format!("⚠️ Referendum title has changed:\n{}", title)
-        } else {
-            "⚠️ Referendum title has been removed.".to_string()
-        };
-        self.telegram_client
-            .send_message(
-                db_referendum.telegram_chat_id,
-                Some(db_referendum.telegram_topic_id),
-                &message,
-            )
-            .await?;
+        if !db_referendum.is_archived {
+            let message = if let Some(title) = title {
+                format!("⚠️ Referendum title has changed:\n{}", title)
+            } else {
+                "⚠️ Referendum title has been removed.".to_string()
+            };
+            self.telegram_client
+                .send_message(
+                    db_referendum.telegram_chat_id,
+                    Some(db_referendum.telegram_topic_id),
+                    &message,
+                    true,
+                )
+                .await?;
+        }
         Ok(())
     }
 
@@ -306,29 +327,25 @@ impl TelegramBot {
         self.postgres
             .update_referendum_status(db_referendum.id, &subsquare_referendum.state.status)
             .await?;
-        self.telegram_client
-            .send_message(
-                db_referendum.telegram_chat_id,
-                Some(db_referendum.telegram_topic_id),
-                &format!(
-                    "{} {}",
-                    subsquare_referendum.state.status.get_icon(),
-                    subsquare_referendum.state.status
-                ),
-            )
-            .await?;
+        if !db_referendum.is_archived {
+            self.telegram_client
+                .send_message(
+                    db_referendum.telegram_chat_id,
+                    Some(db_referendum.telegram_topic_id),
+                    &format!(
+                        "{} {}",
+                        subsquare_referendum.state.status.get_icon(),
+                        subsquare_referendum.state.status
+                    ),
+                    true,
+                )
+                .await?;
+        }
         if !db_referendum.is_terminated && subsquare_referendum.state.status.requires_termination()
         {
-            let opensquare_cid = if let Some(opensquare_cid) = db_referendum.opensquare_cid.as_ref()
-            {
-                opensquare_cid
-            } else {
-                log::error!("Opensquare CID not found - exit.");
-                return Ok(());
-            };
             let opensquare_referendum = if let Some(opensquare_referendum) = self
                 .opensquare_client
-                .fetch_referendum(opensquare_cid)
+                .fetch_referendum(&db_referendum.opensquare_cid)
                 .await?
             {
                 opensquare_referendum
@@ -338,7 +355,7 @@ impl TelegramBot {
             };
             log::info!("New status requires termination.");
             self.opensquare_client
-                .terminate_proposal(chain, opensquare_cid)
+                .terminate_proposal(chain, &db_referendum.opensquare_cid)
                 .await?;
             self.postgres.terminate_referendum(db_referendum.id).await?;
             self.telegram_client
@@ -346,6 +363,7 @@ impl TelegramBot {
                     db_referendum.telegram_chat_id,
                     Some(db_referendum.telegram_topic_id),
                     "OpenSquare referendum terminated.",
+                    true,
                 )
                 .await?;
             let current_vote_count = self
@@ -414,6 +432,7 @@ impl TelegramBot {
                                 .unwrap_or("No title".to_string())
                                 .replace("_", "\\_"),
                         ),
+                        true,
                     )
                     .await?;
                 log::info!(
@@ -450,7 +469,7 @@ impl TelegramBot {
                     ),
                 };
                 self.telegram_client
-                    .send_message(CONFIG.telegram.chat_id, None, &message)
+                    .send_message(CONFIG.telegram.chat_id, None, &message, true)
                     .await?;
                 log::error!("{message}");
                 Ok(false)
@@ -471,43 +490,35 @@ impl TelegramBot {
                     .get_referendum_by_index(chain.id, subsquare_referendum.referendum_index)
                     .await?;
                 if let Some(db_referendum) = maybe_db_referendum.as_ref() {
-                    if !db_referendum.is_archived {
-                        let preimage_exists = match self
-                            .voter
-                            .get_referendum_lookup(chain, db_referendum.index)
-                            .await?
-                        {
-                            Some(lookup) => {
-                                self.voter.get_preimage(chain, &lookup).await?.is_some()
-                            }
-                            None => false,
-                        };
-                        if subsquare_referendum.state.status.is_ongoing()
-                            && db_referendum.preimage_exists != preimage_exists
-                        {
-                            self.update_referendum_preimage_exists(
-                                db_referendum,
-                                chain,
-                                preimage_exists,
-                            )
+                    let preimage_exists = match self
+                        .voter
+                        .get_referendum_lookup(chain, db_referendum.index)
+                        .await?
+                    {
+                        Some(lookup) => self.voter.get_preimage(chain, &lookup).await?.is_some(),
+                        None => false,
+                    };
+                    if subsquare_referendum.state.status.is_ongoing()
+                        && db_referendum.preimage_exists != preimage_exists
+                    {
+                        self.update_referendum_preimage_exists(
+                            db_referendum,
+                            chain,
+                            preimage_exists,
+                        )
+                        .await?;
+                    }
+                    if db_referendum.title != subsquare_referendum.title {
+                        self.update_referendum_title(
+                            db_referendum,
+                            chain,
+                            &subsquare_referendum.title,
+                        )
+                        .await?;
+                    }
+                    if db_referendum.status != subsquare_referendum.state.status {
+                        self.update_referendum_status(db_referendum, subsquare_referendum, chain)
                             .await?;
-                        }
-                        if db_referendum.title != subsquare_referendum.title {
-                            self.update_referendum_title(
-                                db_referendum,
-                                chain,
-                                &subsquare_referendum.title,
-                            )
-                            .await?;
-                        }
-                        if db_referendum.status != subsquare_referendum.state.status {
-                            self.update_referendum_status(
-                                db_referendum,
-                                subsquare_referendum,
-                                chain,
-                            )
-                            .await?;
-                        }
                     }
                 } else if (ReferendumStatus::Deciding == subsquare_referendum.state.status
                     || ReferendumStatus::Confirming == subsquare_referendum.state.status)
@@ -518,6 +529,220 @@ impl TelegramBot {
             }
         }
         log::info!("Imported {imported_referendum_count} referenda.");
+        Ok(())
+    }
+
+    #[allow(clippy::cognitive_complexity)]
+    async fn update_votes(&self, chain: &Chain) -> anyhow::Result<()> {
+        let members = self.postgres.get_all_members(false).await?;
+        let db_referenda = self
+            .postgres
+            .get_referenda_by_statuses(chain.id, &ReferendumStatus::get_ongoing())
+            .await?;
+        for db_referendum in db_referenda.iter() {
+            log::info!(
+                "Check {} #{} for vote changes.",
+                chain.chain,
+                db_referendum.index
+            );
+            let mut feedback = Vec::new();
+            let last_vote = self
+                .postgres
+                .get_referendum_last_vote(db_referendum.id)
+                .await?;
+            let opensquare_votes = self
+                .opensquare_client
+                .fetch_referendum_votes(&db_referendum.opensquare_cid)
+                .await?
+                .ok_or(anyhow::anyhow!(
+                    "Opensquare referendum not found for {} #{}.",
+                    chain.chain,
+                    db_referendum.index,
+                ))?;
+            let last_vote_member_votes = if let Some(last_vote) = &last_vote {
+                self.postgres.get_vote_member_votes(last_vote.id).await?
+            } else {
+                Vec::new()
+            };
+            let pending_member_votes = self
+                .postgres
+                .get_referendum_pending_member_votes(db_referendum.id)
+                .await?;
+            for pending_member_vote in pending_member_votes.iter() {
+                if !opensquare_votes
+                    .iter()
+                    .any(|vote| vote.address == pending_member_vote.address)
+                {
+                    if let Some(member) = members
+                        .iter()
+                        .find(|member| member.polkadot_address == pending_member_vote.address)
+                    {
+                        self.postgres
+                            .delete_pending_member_vote(pending_member_vote.id)
+                            .await?;
+                        feedback.push(format!("• {} removed their vote", member.name,));
+                    }
+                }
+            }
+            let mut change_count = 0;
+            for opensquare_vote in opensquare_votes.iter() {
+                let Some(member) = members
+                    .iter()
+                    .find(|member| member.polkadot_address == opensquare_vote.address)
+                else {
+                    continue;
+                };
+                if last_vote_member_votes
+                    .iter()
+                    .any(|member_vote| member_vote.cid == opensquare_vote.cid)
+                {
+                    log::info!("{} not changed vote since last on-chain vote.", member.name);
+                } else if pending_member_votes
+                    .iter()
+                    .any(|pending_member_vote| pending_member_vote.cid == opensquare_vote.cid)
+                {
+                    log::info!("{} not changed vote since last check.", member.name);
+                } else if let Some(pending_member_vote) =
+                    pending_member_votes.iter().find(|pending_member_vote| {
+                        pending_member_vote.address == opensquare_vote.address
+                    })
+                {
+                    if pending_member_vote.vote != opensquare_vote.get_vote() {
+                        change_count += 1;
+                        let last_vote = get_vote_name(pending_member_vote.vote);
+                        let new_vote = get_vote_name(opensquare_vote.get_vote());
+                        feedback.push(format!(
+                            "• {} changed {} → {}",
+                            member.name, last_vote, new_vote,
+                        ));
+                        log::info!(
+                            "{} has changed {} -> {} since last pending vote.",
+                            member.name,
+                            last_vote,
+                            new_vote,
+                        );
+                    }
+                    self.postgres
+                        .save_pending_member_vote(
+                            &opensquare_vote.cid,
+                            chain.id,
+                            db_referendum.id,
+                            db_referendum.index,
+                            &opensquare_vote.address.to_ss58_check(),
+                            opensquare_vote.get_vote(),
+                            &opensquare_vote.remark,
+                        )
+                        .await?;
+                } else if let Some(last_vote_member_vote) = last_vote_member_votes
+                    .iter()
+                    .find(|member_vote| member_vote.address == opensquare_vote.address)
+                {
+                    if last_vote_member_vote.vote != opensquare_vote.get_vote() {
+                        change_count += 1;
+                        let last_vote = get_vote_name(last_vote_member_vote.vote);
+                        let new_vote = get_vote_name(opensquare_vote.get_vote());
+                        feedback.push(format!(
+                            "• {} changed {} → {}",
+                            member.name, last_vote, new_vote,
+                        ));
+                        log::info!(
+                            "{} changed {} -> {} since last on-chain vote.",
+                            member.name,
+                            last_vote,
+                            new_vote,
+                        );
+                    }
+                    self.postgres
+                        .save_pending_member_vote(
+                            &opensquare_vote.cid,
+                            chain.id,
+                            db_referendum.id,
+                            db_referendum.index,
+                            &opensquare_vote.address.to_ss58_check(),
+                            opensquare_vote.get_vote(),
+                            &opensquare_vote.remark,
+                        )
+                        .await?;
+                } else {
+                    change_count += 1;
+                    let vote = get_vote_name(opensquare_vote.get_vote());
+                    feedback.push(format!("• {} voted {}.", member.name, vote,));
+                    log::info!("{} voted {}.", member.name, vote,);
+                    self.postgres
+                        .save_pending_member_vote(
+                            &opensquare_vote.cid,
+                            chain.id,
+                            db_referendum.id,
+                            db_referendum.index,
+                            &opensquare_vote.address.to_ss58_check(),
+                            opensquare_vote.get_vote(),
+                            &opensquare_vote.remark,
+                        )
+                        .await?;
+                }
+            }
+            let mut submit_vote = false;
+            let vote_counts = get_vote_counts(members.len() as u32, &opensquare_votes);
+            let (evaluation, _) =
+                Policy::policy_for_track(&db_referendum.track).evaluate(&vote_counts);
+            if let Some(last_vote) = &last_vote {
+                let previous_vote = get_vote_name(last_vote.vote);
+                let new_vote = get_vote_name(evaluation.simplify()?);
+                if last_vote.vote != evaluation.simplify()? {
+                    log::info!("Outcome changed {previous_vote} -> {new_vote}.");
+                } else {
+                    let vote = get_vote_name(last_vote.vote);
+                    feedback.push(format!("• Outcome is still {vote}."));
+                    feedback.push("ℹ️ Not submitting a vote.".to_string());
+                    log::info!("Outcome is still {vote}.",);
+                }
+            } else if evaluation.is_no_vote() {
+                feedback.push("• Partipation threshold not met yet.".to_string());
+                feedback.push("ℹ️ Not submitting a vote.".to_string());
+                log::info!("Participation threshold not met. Not submitting a vote.");
+            } else if (db_referendum.track == Track::SmallSpender
+                || db_referendum.track == Track::BigTipper)
+                && opensquare_votes.len() < 3
+            {
+                let message = format!(
+                    "ℹ️ {} - will wait until 3 votes.",
+                    db_referendum.track.name()
+                );
+                log::info!("{message}");
+                feedback.push(message);
+            } else if db_referendum.track == Track::SmallTipper && opensquare_votes.len() < 2 {
+                let message = format!(
+                    "ℹ️ {} - will wait until 2 votes.",
+                    db_referendum.track.name()
+                );
+                log::info!("{message}");
+                feedback.push(message);
+            } else {
+                submit_vote = true;
+                let vote = get_vote_name(evaluation.simplify()?);
+                feedback.push(format!("▶ Submitting first vote as {vote}."));
+                log::info!("▶ Submitting first vote as {vote}.");
+            }
+            if change_count > 0 {
+                self.telegram_client
+                    .send_message(
+                        db_referendum.telegram_chat_id,
+                        Some(db_referendum.telegram_topic_id),
+                        &feedback.join("\n"),
+                        submit_vote,
+                    )
+                    .await?;
+            }
+            if submit_vote {
+                self.process_vote_command(
+                    db_referendum.telegram_chat_id,
+                    Some(db_referendum.telegram_topic_id),
+                    &CONFIG.voter.voting_admin_usernames,
+                    true,
+                )
+                .await?;
+            }
+        }
         Ok(())
     }
 }
@@ -535,9 +760,26 @@ impl Service for TelegramBot {
         log::info!("Telegram bot started.");
         let mut offset: Option<i64> = None;
 
-        let polkadot = Chain::polkadot();
-        let kusama = Chain::kusama();
         tokio::spawn(async move {
+            let polkadot = Chain::polkadot();
+            let kusama = Chain::kusama();
+            loop {
+                if let Err(err) = self.update_votes(&polkadot).await {
+                    log::error!("Polkadot auto-vote update failed: {err}");
+                }
+                if let Err(err) = self.update_votes(&kusama).await {
+                    log::error!("Kusama auto-vote update failed: {err}");
+                }
+                log::info!("Sleep for {} seconds.", CONFIG.voter.sleep_seconds);
+                tokio::time::sleep(std::time::Duration::from_secs(CONFIG.voter.sleep_seconds))
+                    .await;
+            }
+        })
+        .await?;
+
+        tokio::spawn(async move {
+            let polkadot = Chain::polkadot();
+            let kusama = Chain::kusama();
             loop {
                 if let Err(err) = self.import_referenda(&polkadot).await {
                     log::error!("Import Polkadot referenda failed: {err}");

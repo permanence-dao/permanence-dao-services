@@ -2,10 +2,10 @@ use chrono::Utc;
 use pdao_config::Config;
 use pdao_types::governance::opensquare::{
     OpenSquareAppendantRequest, OpenSquareAppendantRequestData, OpenSquareAppendantResponse,
-    OpenSquareNewProposal, OpenSquareNewProposalRequest, OpenSquareNewProposalResponse,
-    OpenSquareReferendum, OpenSquareReferendumVote, OpenSquareReferendumVotesResponse,
-    OpenSquareTerminateProposalRequest, OpenSquareTerminateProposalRequestData,
-    OpenSquareTerminateProposalResponse,
+    OpenSquareIPFSReferendumVote, OpenSquareNewProposal, OpenSquareNewProposalRequest,
+    OpenSquareNewProposalResponse, OpenSquareReferendum, OpenSquareReferendumVote,
+    OpenSquareReferendumVotesResponse, OpenSquareTerminateProposalRequest,
+    OpenSquareTerminateProposalRequestData, OpenSquareTerminateProposalResponse,
 };
 use pdao_types::governance::subsquare::SubSquareReferendum;
 use pdao_types::governance::track::Track;
@@ -52,6 +52,18 @@ impl OpenSquareClient {
         }
         let refererendum = response.json::<OpenSquareReferendum>().await?;
         Ok(Some(refererendum))
+    }
+
+    pub async fn fetch_referendum_vote(
+        &self,
+        cid: &str,
+    ) -> anyhow::Result<Option<OpenSquareIPFSReferendumVote>> {
+        let url = format!("https://opensquare.infura-ipfs.io/ipfs/{cid}");
+        let response = self.http_client.get(url).send().await?;
+        if response.status().as_u16() == 404 {
+            return Ok(None);
+        }
+        Ok(Some(response.json::<OpenSquareIPFSReferendumVote>().await?))
     }
 
     pub async fn fetch_referendum_votes(

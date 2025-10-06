@@ -17,6 +17,7 @@ impl TelegramBot {
                     chat_id,
                     thread_id,
                     "Please append the chain name or ticker, and referendum id to the command.",
+                    true,
                 )
                 .await?;
             return Ok(());
@@ -35,6 +36,7 @@ impl TelegramBot {
                             "Unknown chain: {}. Please use one of the known chains (Polkadot, Kusama).",
                             args[1],
                         ),
+                        true,
                     )
                     .await?;
                 return Ok(());
@@ -51,6 +53,7 @@ impl TelegramBot {
                         "Invalid referendum id: {}. Please enter a valid number.",
                         args[index_arg_index],
                     ),
+                    true,
                 )
                 .await?;
             return Ok(());
@@ -78,7 +81,7 @@ impl TelegramBot {
                 ReferendumImportError::SystemError(description) => description,
             };
             self.telegram_client
-                .send_message(chat_id, thread_id, &message)
+                .send_message(chat_id, thread_id, &message, true)
                 .await?;
             return Ok(());
         }
@@ -90,6 +93,7 @@ impl TelegramBot {
                     "{} referendum {} imported successfully.",
                     chain.display, index
                 ),
+                true,
             )
             .await?;
         Ok(())

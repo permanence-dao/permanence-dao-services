@@ -1,7 +1,7 @@
 use crate::command::util::{
     get_vote_counts, require_db_referendum, require_db_referendum_is_active,
-    require_opensquare_cid, require_opensquare_referendum, require_opensquare_votes,
-    require_subsquare_referendum, require_thread,
+    require_opensquare_referendum, require_opensquare_votes, require_subsquare_referendum,
+    require_thread,
 };
 use crate::TelegramBot;
 use pdao_types::governance::policy::Policy;
@@ -22,16 +22,19 @@ impl TelegramBot {
         let subsquare_referendum =
             require_subsquare_referendum(&self.subsquare_client, &chain, db_referendum.index)
                 .await?;
-        let opensquare_cid = require_opensquare_cid(&db_referendum)?;
         let opensquare_referendum =
-            require_opensquare_referendum(&self.opensquare_client, opensquare_cid).await?;
+            require_opensquare_referendum(&self.opensquare_client, &db_referendum.opensquare_cid)
+                .await?;
         let member_account_ids = self
             .postgres
             .get_all_member_account_ids_for_chain(true, Chain::polkadot().id)
             .await?;
-        let opensquare_votes =
-            require_opensquare_votes(&self.opensquare_client, opensquare_cid, &member_account_ids)
-                .await?;
+        let opensquare_votes = require_opensquare_votes(
+            &self.opensquare_client,
+            &db_referendum.opensquare_cid,
+            &member_account_ids,
+        )
+        .await?;
 
         let policy = Policy::policy_for_track(&db_referendum.track);
         let vote_counts = get_vote_counts(voting_member_count, &opensquare_votes);
@@ -106,7 +109,7 @@ impl TelegramBot {
             message = format!("{message}\n\nMirror referendum is terminated.");
         }
         self.telegram_client
-            .send_message(chat_id, Some(thread_id), &message)
+            .send_message(chat_id, Some(thread_id), &message, true)
             .await?;
         Ok(())
     }

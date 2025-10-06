@@ -37,7 +37,7 @@ impl TelegramBot {
             "**CORE MEMBERS:**\n{core_members}\n\n**COMMUNITY MEMBERS:**\n{community_members}",
         );
         self.telegram_client
-            .send_message(chat_id, thread_id, &message)
+            .send_message(chat_id, thread_id, &message, true)
             .await?;
         Ok(())
     }
