@@ -35,7 +35,7 @@ impl Chain {
             id: 2,
             chain: "kusama".to_string(),
             display: "Kusama".to_string(),
-            rpc_url: "wss://rpc.helikon.io:443/kusama".to_string(),
+            rpc_url: "wss://rpc.helikon.io:443/asset-hub-kusama".to_string(),
             token_ticker: "KSM".to_string(),
             token_decimals: 12,
             token_format_decimal_points: 4,

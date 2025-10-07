@@ -3,7 +3,7 @@ use kusama::conviction_voting::calls::types::vote::Vote as VoteCall;
 use kusama::runtime_types::pallet_conviction_voting::pallet::Call as VotingCall;
 use kusama::runtime_types::pallet_conviction_voting::vote::Vote;
 use kusama::runtime_types::pallet_proxy::pallet::Call as ProxyCall;
-use kusama::runtime_types::staging_kusama_runtime::RuntimeCall as KusamaRuntimeCall;
+use kusama::runtime_types::asset_hub_kusama_runtime::RuntimeCall as KusamaRuntimeCall;
 use pdao_substrate_client::SubstrateClient;
 use pdao_types::substrate::chain::Chain;
 use std::str::FromStr;
