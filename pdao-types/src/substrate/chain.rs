@@ -32,6 +32,21 @@ impl Chain {
         }
     }
 
+    pub fn polkadot_asset_hub() -> Self {
+        Chain {
+            id: 2,
+            chain: "polkadot asset hub".to_string(),
+            display: "Polkadot Asset Hub".to_string(),
+            rpc_url: "wss://rpc.helikon.io:443/asset-hub-polkadot".to_string(),
+            asset_hub_rpc_url: "wss://rpc.helikon.io:443/asset-hub-polkadot".to_string(),
+            token_ticker: "KSM".to_string(),
+            token_decimals: 12,
+            token_format_decimal_points: 4,
+            ss58_prefix: 2,
+            block_time_seconds: 6,
+        }
+    }
+
     pub fn kusama() -> Self {
         Chain {
             id: 2,
@@ -87,7 +102,9 @@ impl FromStr for Chain {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "kusama" | "ksm" => Ok(Self::kusama()),
+            "kusama asset hub" | "kah" => Ok(Self::kusama_asset_hub()),
             "polkadot" | "dot" => Ok(Self::polkadot()),
+            "polkadot asset hub" | "pah" => Ok(Self::polkadot_asset_hub()),
             _ => Err(ParseChainError(format!("Unknown chain: {s}"))),
         }
     }

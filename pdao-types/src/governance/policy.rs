@@ -599,6 +599,13 @@ mod tests {
                 majority_threshold: 4.0,
             },
         );
+        assert_eq!(
+            policy.evaluate(&VoteCounts::new(8, 1, 2, 1)).0,
+            PolicyEvaluation::Nay {
+                vote_counts: VoteCounts::new(8, 1, 2, 1),
+                majority_threshold: 2.0,
+            },
+        );
     }
 
     #[test]
