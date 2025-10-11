@@ -10,7 +10,7 @@ pub(crate) async fn get_referendum_info_kusama(
     chain: &Chain,
     referendum_index: u32,
 ) -> anyhow::Result<Option<KusamaReferendumInfoFor>> {
-    let api = OnlineClient::<PolkadotConfig>::from_url(&chain.rpc_url).await?;
+    let api = OnlineClient::<PolkadotConfig>::from_url(&chain.asset_hub_rpc_url).await?;
     let query = kusama::storage()
         .referenda()
         .referendum_info_for(referendum_index);

@@ -863,7 +863,7 @@ impl Service for TelegramBot {
                     }
                 }
                 Err(error) => {
-                    log::error!("Error while receiving Telegram updates: {error:?}");
+                    log::error!("Error while receiving Telegram updates: {error:?}. Restart.");
                 }
             }
         }

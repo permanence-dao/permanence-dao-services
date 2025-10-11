@@ -10,7 +10,6 @@ license.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 frankenstein = { workspace = true }
-html-escape = "0.2"
 pdao-config = { path = "../pdao-config" }
 pdao-types = { path = "../pdao-types" }
 log = { workspace = true }

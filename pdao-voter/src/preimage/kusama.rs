@@ -8,7 +8,7 @@ pub(crate) async fn get_preimage_kusama(
     chain: &Chain,
     lookup: &ReferendumLookup,
 ) -> anyhow::Result<Option<Vec<u8>>> {
-    let api = OnlineClient::<PolkadotConfig>::from_url(&chain.rpc_url).await?;
+    let api = OnlineClient::<PolkadotConfig>::from_url(&chain.asset_hub_rpc_url).await?;
     let query = kusama::storage()
         .preimage()
         .preimage_for((H256(lookup.hash), lookup.length));
