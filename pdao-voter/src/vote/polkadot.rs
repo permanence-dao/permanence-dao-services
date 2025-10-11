@@ -71,7 +71,7 @@ impl Voter {
         let call = polkadot::tx()
             .utility()
             .batch_all(vec![main_proxy_call, dv_proxy_call]);
-        let api = OnlineClient::<PolkadotConfig>::from_url(&chain.rpc_url).await?;
+        let api = OnlineClient::<PolkadotConfig>::from_url(&chain.asset_hub_rpc_url).await?;
         let uri = SecretUri::from_str(&self.config.voter.polkadot_proxy_account_seed_phrase)
             .expect("Invalid seed phrase.");
         let keypair = sr25519::Keypair::from_uri(&uri).expect("Invalid keypair.");
@@ -84,7 +84,7 @@ impl Voter {
         let block_hash = format!("0x{}", hex::encode(block_hash.0));
         let events = tx_in_block.wait_for_success().await?;
         let subtrate_client = SubstrateClient::new(
-            &chain.rpc_url,
+            &chain.asset_hub_rpc_url,
             self.config.substrate.connection_timeout_seconds,
             self.config.substrate.request_timeout_seconds,
         )

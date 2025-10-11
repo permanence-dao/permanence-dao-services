@@ -72,6 +72,7 @@ impl TelegramBot {
                 conviction,
             )
             .await?;
+        log::info!("Vote submitted.");
         let (subsquare_cid, subsquare_index) = if post_feedback {
             log::info!("Get OpenAI feedback summary.");
             let feedback = self
@@ -169,7 +170,7 @@ impl TelegramBot {
             "No CoI reported. DV delegation exercised."
         };
         let mut message = format!(
-            "Vote #{} submitted.\n{}\n{coi_message}\nhttps://{}.subscan.io/extrinsic/{}-{}",
+            "Vote #{} submitted.\n{}\n{coi_message}\nhttps://assethub-{}.subscan.io/extrinsic/{}-{}",
             past_votes.len() + 1,
             description_lines.join("\n"),
             chain.chain.to_lowercase(),

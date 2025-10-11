@@ -8,6 +8,7 @@ pub struct Chain {
     pub chain: String,
     pub display: String,
     pub rpc_url: String,
+    pub asset_hub_rpc_url: String,
     pub token_ticker: String,
     pub token_decimals: usize,
     pub token_format_decimal_points: usize,
@@ -22,6 +23,7 @@ impl Chain {
             chain: "polkadot".to_string(),
             display: "Polkadot".to_string(),
             rpc_url: "wss://rpc.helikon.io:443/polkadot".to_string(),
+            asset_hub_rpc_url: "wss://rpc.helikon.io:443/asset-hub-polkadot".to_string(),
             token_ticker: "DOT".to_string(),
             token_decimals: 10,
             token_format_decimal_points: 4,
@@ -35,7 +37,23 @@ impl Chain {
             id: 2,
             chain: "kusama".to_string(),
             display: "Kusama".to_string(),
+            rpc_url: "wss://rpc.helikon.io:443/kusama".to_string(),
+            asset_hub_rpc_url: "wss://rpc.helikon.io:443/asset-hub-kusama".to_string(),
+            token_ticker: "KSM".to_string(),
+            token_decimals: 12,
+            token_format_decimal_points: 4,
+            ss58_prefix: 2,
+            block_time_seconds: 6,
+        }
+    }
+
+    pub fn kusama_asset_hub() -> Self {
+        Chain {
+            id: 2,
+            chain: "kusama asset hub".to_string(),
+            display: "Kusama Asset Hub".to_string(),
             rpc_url: "wss://rpc.helikon.io:443/asset-hub-kusama".to_string(),
+            asset_hub_rpc_url: "wss://rpc.helikon.io:443/asset-hub-kusama".to_string(),
             token_ticker: "KSM".to_string(),
             token_decimals: 12,
             token_format_decimal_points: 4,
