@@ -790,19 +790,23 @@ impl TelegramBot {
                     .await?;
             }
             if submit_vote {
-                self.process_vote_command(
-                    db_referendum.telegram_chat_id,
-                    Some(db_referendum.telegram_topic_id),
-                    &CONFIG.voter.voting_admin_usernames,
-                    true,
-                )
-                .await?;
-                self.process_notify_command(
-                    db_referendum.telegram_chat_id,
-                    Some(db_referendum.telegram_topic_id),
-                    &CONFIG.voter.voting_admin_usernames,
-                )
-                .await?;
+                if last_vote.map(|vote| vote.is_forced).unwrap_or(false) {
+                    log::info!("ℹ️ Last vote was forced. Not submitting a vote.");
+                } else {
+                    self.process_vote_command(
+                        db_referendum.telegram_chat_id,
+                        Some(db_referendum.telegram_topic_id),
+                        &CONFIG.voter.voting_admin_usernames,
+                        true,
+                    )
+                    .await?;
+                    self.process_notify_command(
+                        db_referendum.telegram_chat_id,
+                        Some(db_referendum.telegram_topic_id),
+                        &CONFIG.voter.voting_admin_usernames,
+                    )
+                    .await?;
+                }
             }
         }
         Ok(())
