@@ -60,7 +60,7 @@ impl Voter {
             balance,
             conviction,
         )?;
-        let dv_proxy_call = Self::get_polkadot_vote_call(
+        let _dv_proxy_call = Self::get_polkadot_vote_call(
             &self.config.voter.polkadot_dv_delegation_account_address,
             referendum_index,
             if has_coi { None } else { vote },
@@ -70,7 +70,8 @@ impl Voter {
 
         let call = polkadot::tx()
             .utility()
-            .batch_all(vec![main_proxy_call, dv_proxy_call]);
+            //.batch_all(vec![main_proxy_call, dv_proxy_call]);
+            .batch_all(vec![main_proxy_call]);
         let api = OnlineClient::<PolkadotConfig>::from_url(&chain.asset_hub_rpc_url).await?;
         let uri = SecretUri::from_str(&self.config.voter.polkadot_proxy_account_seed_phrase)
             .expect("Invalid seed phrase.");

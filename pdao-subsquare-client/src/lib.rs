@@ -19,7 +19,7 @@ fn get_vote_content(
     previous_vote_count: u32,
     evaluation: &PolicyEvaluation,
     description_lines: &[String],
-    has_coi: bool,
+    _has_coi: bool,
     feedback_summary: &str,
     delegation_address: &str,
 ) -> anyhow::Result<String> {
@@ -32,11 +32,13 @@ fn get_vote_content(
     } else {
         "ABSTAIN"
     };
-    let coi_disclaimer = if has_coi {
+
+    let coi_disclaimer = ""; /*if has_coi {
         "<br><br>**DISCLAIMER:** Our Decentralized Voices delegation voted to abstain on this referendum in accordance with our conflict of interest policy, [announced](https://x.com/PermanenceDAO/status/1905223487976783987) on March 27th, 2025."
     } else {
         ""
     };
+     */
 
     let content = format!(
         r#"Dear Proposer,
@@ -53,7 +55,7 @@ The full discussion can be found in our [internal voting](https://voting.opensqu
 
 Please feel free to contact us through the links below for further discussion.{coi_disclaimer}
 
-Kind regards,<br>Permanence DAO<br>Decentralized Voices Cohort V Delegate<br><br>📅 [Book Office Hours](https://cal.com/permanencedao/office-hours)<br>💬 [Public Telegram](https://t.me/permanencedao)<br>🌐️ [Web](https://permanence.io)<br>🐦 [Twitter](https://twitter.com/permanencedao)<br>🗳️ [Delegate](https://{}.subsquare.io/user/{}/votes)"#,
+Kind regards,<br>Permanence DAO<br>💬 [Public Telegram](https://t.me/permanencedao)<br>🌐️ [Web](https://permanence.io)<br>🐦 [Twitter](https://twitter.com/permanencedao)<br>🗳️ [Delegate](https://{}.subsquare.io/user/{}/votes)"#,
         O32::from1(previous_vote_count + 1),
         vote,
         voting_policy_version,

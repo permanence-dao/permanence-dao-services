@@ -168,10 +168,10 @@ impl OpenSquareNewProposal {
                 }],
                 accessibility: "whitelist".to_string(),
                 members: vec![
-                    "1ZSPR3zNg5Po3obkhXTPR95DepNBzBZ3CyomHXGHK9Uvx6w".to_string(),
+                    //"1ZSPR3zNg5Po3obkhXTPR95DepNBzBZ3CyomHXGHK9Uvx6w".to_string(),
                     "12His7t3EJ38tjdBbivUzWQeaNCLKfMqtKp1Ed3xHMyCE9N3".to_string(),
                     "12s6UMSSfE2bNxtYrJc6eeuZ7UxQnRpUzaAh1gPQrGNFnE8h".to_string(),
-                    "13EDmaUe89xXocPppFmuoAZaCsckaJy3deAyVyiykk1zKQbF".to_string(),
+                    //"13EDmaUe89xXocPppFmuoAZaCsckaJy3deAyVyiykk1zKQbF".to_string(),
                     "14gMJV95zwxUsFEZDSC8mtBVifS6SypKJkfBKANkMsLZdeVb".to_string(),
                     "14Gn7SEmCgMX7Ukuppnw5TRjA7pao2HFpuJo39frB42tYLEh".to_string(),
                     "15fTH34bbKGMUjF1bLmTqxPYgpg481imThwhWcQfCyktyBzL".to_string(),
